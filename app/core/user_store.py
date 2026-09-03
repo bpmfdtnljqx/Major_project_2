@@ -186,3 +186,18 @@ class UserStore:
             conn.commit()
         finally:
             conn.close()
+
+    def reset(self) -> None:
+        """清空所有用户与会话，重建初始管理员（用于系统重置）。"""
+        conn = self._connect()
+        try:
+            conn.execute("DELETE FROM users")
+            conn.execute("DELETE FROM sessions")
+            conn.execute(
+                "INSERT INTO users (user_id, username, password_hash, role, join_time) "
+                "VALUES ('1', 'admin', ?, 'admin', ?)",
+                (hash_password("admintestpassword"), date.today().isoformat()),
+            )
+            conn.commit()
+        finally:
+            conn.close()

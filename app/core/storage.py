@@ -78,6 +78,12 @@ class ProblemStore:
         self._write(problem)
         return problem
 
+    def reset(self) -> None:
+        """清空所有题目并重新播种初始题库（用于系统重置）。"""
+        for path in self.problems_dir.glob("*.json"):
+            path.unlink()
+        self.load()
+
     # ---- 内部 ----
     def _write(self, problem: Problem) -> None:
         path = self.problems_dir / f"{problem.id}.json"
