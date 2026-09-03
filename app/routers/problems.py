@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Request
 
 from app.core.auth import get_admin, get_current_user
 from app.core.response import AppError, ok
-from app.models import Problem
+from app.models import LogVisibility, Problem
 
 router = APIRouter()
 
@@ -70,3 +70,15 @@ async def delete_problem(request: Request, problem_id: str, _: dict = Depends(ge
         raise AppError(404, "problem not found")
     store.delete(problem_id)
     return ok(data={"id": problem_id}, msg="delete success")
+
+
+@router.put("/problems/{problem_id}/log_visibility")
+async def update_log_visibility(
+    request: Request, problem_id: str, body: LogVisibility, _: dict = Depends(get_admin)
+):
+    """配置日志可见性（Step 5，仅管理员）。"""
+    store = _store(request)
+    problem = store.update_public_cases(problem_id, body.public_cases)
+    if problem is None:
+        raise AppError(404, "problem not found")
+    return ok(data={"problem_id": problem_id, "public_cases": body.public_cases}, msg="log visibility updated")
