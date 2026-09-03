@@ -5,17 +5,23 @@
 """
 
 import json
+import os
 import uuid
+from pathlib import Path
 
 import requests
+from dotenv import load_dotenv
+
+# 加载项目根目录的 .env（存 API Key，已被 .gitignore 忽略，不会提交）
+load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 
 # ============================================================
-# 真实 LLM 配置（接入真实模型时填写）
+# 真实 LLM 配置（在 .env 中填写，参考 .env.example 模板）
 # ============================================================
-USE_MOCK = True  # 改为 False 时启用真实模型调用
-REAL_API_KEY = ""  # TODO: 在这里填入你的 API Key
-REAL_BASE_URL = "https://api.openai.com/v1"  # 或 DeepSeek / 智谱等 OpenAI 兼容地址
-REAL_MODEL = "gpt-4o-mini"  # 模型名称
+USE_MOCK = os.getenv("AI_USE_MOCK", "true").lower() == "true"  # true 时用 mock，不调真实模型
+REAL_API_KEY = os.getenv("AI_API_KEY", "")  # 你的 API Key
+REAL_BASE_URL = os.getenv("AI_BASE_URL", "https://api.openai.com/v1")  # OpenAI 兼容地址
+REAL_MODEL = os.getenv("AI_MODEL", "gpt-4o-mini")  # 模型名称
 
 # 生成题目的 prompt 模板
 _PROMPT = """你是 OJ 出题助手。请根据以下需求生成一道编程题，并严格只输出 JSON（不要输出任何 JSON 以外的文字或代码块标记），字段如下：
