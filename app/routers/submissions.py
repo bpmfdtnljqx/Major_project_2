@@ -1,6 +1,7 @@
-"""提交评测路由（Step 2）。
+"""提交评测路由（Step 2 / Step 3）。
 
-POST /api/submissions/ —— 提交代码，异步评测，立即返回 pending。
+POST /api/submissions/                  —— 提交代码，异步评测，立即返回 pending。
+GET  /api/submissions/{submission_id}   —— 查询评测结果。
 评测任务在后台通过 asyncio.to_thread 运行阻塞的 judge，完成后回写 SQLite。
 """
 
@@ -57,6 +58,25 @@ async def create_submission(request: Request, body: SubmissionCreate):
     task.add_done_callback(request.app.state.judge_tasks.discard)
 
     return ok(data={"submission_id": submission_id, "status": "pending"})
+
+
+@router.get("/submissions/{submission_id}")
+async def get_submission(request: Request, submission_id: str):
+    """查询评测结果（Step 3）。"""
+    store = request.app.state.submission_store
+    sub = store.get(submission_id)
+    if sub is None:
+        raise AppError(404, "submission not found")
+    data = {
+        "submission_id": sub["submission_id"],
+        "status": sub["status"],
+        "score": sub["score"],
+        "counts": sub["counts"],
+        "compile_info": sub["compile_info"],
+        "run_info": sub["run_info"],
+        "error_info": sub["error_info"],
+    }
+    return ok(data=data)
 
 
 async def _judge_task(submission_store, problem, language, code, submission_id):
