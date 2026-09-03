@@ -21,7 +21,7 @@ from app.core.response import AppError, error_response
 from app.core.storage import ProblemStore
 from app.core.submission_store import SubmissionStore
 from app.core.user_store import UserStore
-from app.routers import ai, languages, logs, problems, submissions, users
+from app.routers import ai, languages, logs, problems, submissions, system, users
 
 # 项目根目录（app/ 的上一级）
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -55,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(users.router, prefix="/api")
     app.include_router(logs.router, prefix="/api")
     app.include_router(ai.router, prefix="/api")
+    app.include_router(system.router, prefix="/api")
 
     _register_exception_handlers(app)
     return app
