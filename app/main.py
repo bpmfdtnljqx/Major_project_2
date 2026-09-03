@@ -18,6 +18,7 @@ from app.core.rate_limit import RateLimiter
 from app.core.response import AppError, error_response
 from app.core.storage import ProblemStore
 from app.core.submission_store import SubmissionStore
+from app.core.user_store import UserStore
 from app.routers import languages, problems, submissions
 
 # 项目根目录（app/ 的上一级）
@@ -38,6 +39,7 @@ def create_app() -> FastAPI:
 
     # 初始化提交存储（SQLite）与频率限制
     app.state.submission_store = SubmissionStore(BASE_DIR / "data" / "oj.db")
+    app.state.user_store = UserStore(BASE_DIR / "data" / "oj.db")
     app.state.rate_limiter = RateLimiter()
     app.state.judge_tasks = set()  # 持有后台评测任务引用，防被 GC
 
