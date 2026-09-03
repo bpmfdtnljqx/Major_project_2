@@ -1,17 +1,16 @@
 """题目管理路由（Step 1）。
 
 提供题目的增删改查接口，路径与 api.md 保持一致：
-- GET    /api/problems/
-- POST   /api/problems/
-- GET    /api/problems/{problem_id}
-- PUT    /api/problems/{problem_id}
-- DELETE /api/problems/{problem_id}
-
-注意：鉴权（401/403）在 Step 4 统一补充，当前暂不校验。
+- GET    /api/problems/            （已登录）
+- POST   /api/problems/            （已登录）
+- GET    /api/problems/{problem_id}（已登录）
+- PUT    /api/problems/{problem_id}（已登录）
+- DELETE /api/problems/{problem_id}（仅管理员）
 """
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
+from app.core.auth import get_admin, get_current_user
 from app.core.response import AppError, ok
 from app.models import Problem
 
@@ -24,7 +23,7 @@ def _store(request: Request):
 
 
 @router.get("/problems/")
-async def list_problems(request: Request):
+async def list_problems(request: Request, _: dict = Depends(get_current_user)):
     """查看题目列表：返回全部题目的简要信息（id + title）。"""
     store = _store(request)
     data = [{"id": p.id, "title": p.title} for p in store.list_all()]
@@ -32,7 +31,7 @@ async def list_problems(request: Request):
 
 
 @router.post("/problems/")
-async def create_problem(request: Request, problem: Problem):
+async def create_problem(request: Request, problem: Problem, _: dict = Depends(get_current_user)):
     """添加题目：校验字段完整性后保存，id 已存在返回 409。"""
     store = _store(request)
     if store.exists(problem.id):
@@ -42,7 +41,7 @@ async def create_problem(request: Request, problem: Problem):
 
 
 @router.get("/problems/{problem_id}")
-async def get_problem(request: Request, problem_id: str):
+async def get_problem(request: Request, problem_id: str, _: dict = Depends(get_current_user)):
     """查看题目详情：返回完整题目配置。"""
     store = _store(request)
     problem = store.get(problem_id)
@@ -52,7 +51,7 @@ async def get_problem(request: Request, problem_id: str):
 
 
 @router.put("/problems/{problem_id}")
-async def update_problem(request: Request, problem_id: str, problem: Problem):
+async def update_problem(request: Request, problem_id: str, problem: Problem, _: dict = Depends(get_current_user)):
     """编辑题目：校验完整配置后覆盖，请求体 id 须与路径一致。"""
     store = _store(request)
     if problem.id != problem_id:
@@ -64,8 +63,8 @@ async def update_problem(request: Request, problem_id: str, problem: Problem):
 
 
 @router.delete("/problems/{problem_id}")
-async def delete_problem(request: Request, problem_id: str):
-    """删除题目：按 id 删除对应配置。"""
+async def delete_problem(request: Request, problem_id: str, _: dict = Depends(get_admin)):
+    """删除题目（仅管理员）。"""
     store = _store(request)
     if not store.exists(problem_id):
         raise AppError(404, "problem not found")
