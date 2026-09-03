@@ -174,7 +174,14 @@ async def get_submission_log(request: Request, submission_id: str, current: dict
 
     is_admin = current["role"] == "admin"
     is_owner = sub["user_id"] == current["user_id"]
-    if not (is_admin or is_owner or public_cases):
+    can_view = is_admin or is_owner or public_cases
+
+    # 记录访问审计（仅已登录且 submission 存在时记录）
+    request.app.state.access_log_store.record(
+        current["user_id"], sub["problem_id"], "view_logs", "200" if can_view else "403"
+    )
+
+    if not can_view:
         raise AppError(403, "permission denied")
 
     return ok(data={"details": sub["details"], "score": sub["score"], "counts": sub["counts"]})
