@@ -1,8 +1,9 @@
 """提交评测路由（Step 2 / Step 3）。
 
-POST /api/submissions/                  —— 提交代码，异步评测，立即返回 pending。
-GET  /api/submissions/                  —— 查询评测列表（过滤 + 分页）。
-GET  /api/submissions/{submission_id}   —— 查询评测结果。
+POST /api/submissions/                        —— 提交代码，异步评测，立即返回 pending。
+GET  /api/submissions/                        —— 查询评测列表（过滤 + 分页）。
+GET  /api/submissions/{submission_id}         —— 查询评测结果。
+PUT  /api/submissions/{submission_id}/rejudge —— 重新评测（覆盖原结果）。
 评测任务在后台通过 asyncio.to_thread 运行阻塞的 judge，完成后回写 SQLite。
 """
 
@@ -114,6 +115,40 @@ async def list_submissions(
                 "counts": s["counts"],
             })
     return ok(data={"total": total, "submissions": items})
+
+
+@router.put("/submissions/{submission_id}/rejudge")
+async def rejudge_submission(request: Request, submission_id: str):
+    """重新评测（Step 3）：覆盖原结果，异步重跑。"""
+    problem_store = request.app.state.problem_store
+    language_store = request.app.state.language_store
+    submission_store = request.app.state.submission_store
+
+    sub = submission_store.get(submission_id)
+    if sub is None:
+        raise AppError(404, "submission not found")
+    problem = problem_store.get(sub["problem_id"])
+    if problem is None:
+        raise AppError(404, "problem not found")
+    language = language_store.get(sub["language"])
+    if language is None:
+        raise AppError(404, "language not found")
+
+    # 覆盖原结果：重置为 pending
+    submission_store.update(
+        submission_id,
+        status="pending", score=None, counts=None,
+        compile_info=None, run_info=None, error_info=None, details=None,
+    )
+
+    # 启动异步评测
+    task = asyncio.create_task(
+        _judge_task(submission_store, problem, language, sub["code"], submission_id)
+    )
+    request.app.state.judge_tasks.add(task)
+    task.add_done_callback(request.app.state.judge_tasks.discard)
+
+    return ok(data={"submission_id": submission_id, "status": "pending"}, msg="rejudge started")
 
 
 async def _judge_task(submission_store, problem, language, code, submission_id):
