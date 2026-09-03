@@ -38,6 +38,13 @@ class Problem(BaseModel):
     memory_limit: int = Field(128, description="内存限制（MB）")
     author: str = Field("", description="题目作者")
     difficulty: str = Field("", description="难度等级")
+    public_cases: bool = Field(False, description="评测日志是否向所有人公开")
+
+
+class LogVisibility(BaseModel):
+    """日志可见性配置请求体（Step 5）。"""
+
+    public_cases: bool = Field(False, description="是否公开评测日志")
 
 
 class Language(BaseModel):
