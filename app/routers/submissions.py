@@ -4,6 +4,7 @@ POST /api/submissions/                        —— 提交代码，异步评测
 GET  /api/submissions/                        —— 查询评测列表（过滤 + 分页）。
 GET  /api/submissions/{submission_id}         —— 查询评测结果。
 PUT  /api/submissions/{submission_id}/rejudge —— 重新评测（覆盖原结果）。
+GET  /api/submissions/{submission_id}/log     —— 查询评测日志（测试点明细）。
 评测任务在后台通过 asyncio.to_thread 运行阻塞的 judge，完成后回写 SQLite。
 """
 
@@ -158,6 +159,25 @@ async def rejudge_submission(request: Request, submission_id: str, _: dict = Dep
     task.add_done_callback(request.app.state.judge_tasks.discard)
 
     return ok(data={"submission_id": submission_id, "status": "pending"}, msg="rejudge started")
+
+
+@router.get("/submissions/{submission_id}/log")
+async def get_submission_log(request: Request, submission_id: str, current: dict = Depends(get_current_user)):
+    """查询评测日志（Step 5）：本人 / 管理员 / 题目公开时可见。"""
+    store = request.app.state.submission_store
+    sub = store.get(submission_id)
+    if sub is None:
+        raise AppError(404, "submission not found")
+
+    problem = request.app.state.problem_store.get(sub["problem_id"])
+    public_cases = problem.public_cases if problem else False
+
+    is_admin = current["role"] == "admin"
+    is_owner = sub["user_id"] == current["user_id"]
+    if not (is_admin or is_owner or public_cases):
+        raise AppError(403, "permission denied")
+
+    return ok(data={"details": sub["details"], "score": sub["score"], "counts": sub["counts"]})
 
 
 async def _judge_task(submission_store, problem, language, code, submission_id):
