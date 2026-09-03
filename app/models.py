@@ -60,3 +60,16 @@ class SubmissionCreate(BaseModel):
     problem_id: str = Field(..., description="题目编号")
     language: str = Field(..., description="语言名称")
     code: str = Field(..., description="用户代码")
+
+
+class Credentials(BaseModel):
+    """用户名密码凭证（登录 / 注册共用）。"""
+
+    username: str = Field(..., description="用户名")
+    password: str = Field(..., description="密码")
+
+
+class RoleUpdate(BaseModel):
+    """用户角色变更请求体。"""
+
+    role: str = Field(..., description="新角色：admin / user / banned")
