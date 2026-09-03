@@ -132,3 +132,13 @@ class AIStore:
             conn.commit()
         finally:
             conn.close()
+
+    def clear(self) -> None:
+        """清空 AI 任务与模型配置（用于系统重置）。"""
+        conn = self._connect()
+        try:
+            conn.execute("DELETE FROM ai_tasks")
+            conn.execute("DELETE FROM model_config")
+            conn.commit()
+        finally:
+            conn.close()

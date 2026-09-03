@@ -42,6 +42,11 @@ class LanguageStore:
         self._languages[language.name] = language
         self._save()
 
+    def clear(self) -> None:
+        """清空动态注册的语言，恢复为内置默认语言（用于系统重置）。"""
+        self._languages = dict(DEFAULT_LANGUAGES)
+        self.data_file.unlink(missing_ok=True)
+
     # ---- 内部 ----
     def _save(self) -> None:
         dynamic = [lang for name, lang in self._languages.items() if name not in DEFAULT_LANGUAGES]

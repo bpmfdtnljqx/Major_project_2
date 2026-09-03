@@ -81,3 +81,12 @@ class AccessLogStore:
             return [dict(r) for r in rows]
         finally:
             conn.close()
+
+    def clear(self) -> None:
+        """清空所有审计记录（用于系统重置）。"""
+        conn = self._connect()
+        try:
+            conn.execute("DELETE FROM access_logs")
+            conn.commit()
+        finally:
+            conn.close()

@@ -142,3 +142,12 @@ class SubmissionStore:
             return total, [self._row_to_dict(r) for r in rows]
         finally:
             conn.close()
+
+    def clear(self) -> None:
+        """清空所有提交记录（用于系统重置）。"""
+        conn = self._connect()
+        try:
+            conn.execute("DELETE FROM submissions")
+            conn.commit()
+        finally:
+            conn.close()
