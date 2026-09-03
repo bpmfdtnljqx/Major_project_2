@@ -44,9 +44,9 @@ _PROMPT = """你是 OJ 出题助手。请根据以下需求生成一道编程题
 """
 
 
-def _mock_generate(requirement: str) -> dict:
-    """mock：生成一个结构完整的示例题目（不含 id）。"""
-    return {
+def _mock_generate(requirement: str) -> tuple[dict, dict]:
+    """mock：生成一个结构完整的示例题目（不含 id），返回 (problem, usage)。"""
+    problem = {
         "title": requirement[:30] + ("……" if len(requirement) > 30 else ""),
         "description": requirement or "（由 AI 生成的题目描述）",
         "input_description": "每行一个测试用例，具体格式见题目描述。",
@@ -62,10 +62,12 @@ def _mock_generate(requirement: str) -> dict:
         "author": "AI",
         "difficulty": "入门",
     }
+    usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0, "currency": "USD"}
+    return problem, usage
 
 
-def _real_generate(requirement: str, config: dict) -> dict:
-    """真实调用 OpenAI 兼容 API 生成题目。"""
+def _real_generate(requirement: str, config: dict) -> tuple[dict, dict]:
+    """真实调用 OpenAI 兼容 API 生成题目，返回 (problem, usage)。"""
     resp = requests.post(
         f"{config['provider_url'].rstrip('/')}/chat/completions",
         headers={"Authorization": f"Bearer {config['api_key']}"},
@@ -77,19 +79,41 @@ def _real_generate(requirement: str, config: dict) -> dict:
         timeout=120,
     )
     resp.raise_for_status()
-    content = resp.json()["choices"][0]["message"]["content"].strip()
+    data = resp.json()
+    content = data["choices"][0]["message"]["content"].strip()
     # 若模型输出被代码块包裹，剥离 ``` 标记
     if content.startswith("```"):
         content = content.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-    return json.loads(content)
+    problem = json.loads(content)
+
+    # Token 用量与费用计算
+    u = data.get("usage", {})
+    input_tokens = u.get("prompt_tokens", 0) or 0
+    output_tokens = u.get("completion_tokens", 0) or 0
+    total_tokens = u.get("total_tokens", input_tokens + output_tokens) or 0
+    price_unit = config.get("price_unit") or 1000000
+    input_price = config.get("input_price") or 0.0
+    output_price = config.get("output_price") or 0.0
+    cost = round(input_tokens / price_unit * input_price + output_tokens / price_unit * output_price, 6)
+    usage = {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": total_tokens,
+        "cost": cost,
+        "currency": "USD",
+    }
+    return problem, usage
 
 
-def generate_problem(requirement: str, config: dict | None = None) -> dict:
-    """生成题目（mock 或真实），返回题目 dict（不含 id，由上层生成）。
+def generate_problem(requirement: str, config: dict | None = None) -> tuple[dict, dict]:
+    """生成题目，返回 (problem_dict, usage_dict)。
 
-    config：模型配置（含 provider_url / model / api_key），为 None 或未配置 key 时走 mock。
+    config：模型配置（含 provider_url / model / api_key / 价格）；为 None 时用 .env 环境变量。
+    USE_MOCK 或未配置 key 时走 mock。
     """
-    if USE_MOCK or not config or not config.get("api_key"):
+    if config is None:
+        config = {"provider_url": REAL_BASE_URL, "model": REAL_MODEL, "api_key": REAL_API_KEY}
+    if USE_MOCK or not config.get("api_key"):
         return _mock_generate(requirement)
     return _real_generate(requirement, config)
 
