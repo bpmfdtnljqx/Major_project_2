@@ -52,3 +52,11 @@ class Language(BaseModel):
     compile_cmd: str | None = Field(None, description="编译命令，如 g++ {src} -o {exe}")
     time_limit: float | None = Field(None, description="语言默认时间限制（秒）")
     memory_limit: int | None = Field(None, description="语言默认内存限制（MB）")
+
+
+class SubmissionCreate(BaseModel):
+    """提交评测请求体（Step 2）。"""
+
+    problem_id: str = Field(..., description="题目编号")
+    language: str = Field(..., description="语言名称")
+    code: str = Field(..., description="用户代码")
