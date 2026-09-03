@@ -38,3 +38,17 @@ class Problem(BaseModel):
     memory_limit: int = Field(128, description="内存限制（MB）")
     author: str = Field("", description="题目作者")
     difficulty: str = Field("", description="难度等级")
+
+
+class Language(BaseModel):
+    """编程语言配置模型（Step 2）。
+
+    {src} / {exe} 占位符会被替换为源码路径 / 编译产物路径。
+    """
+
+    name: str = Field(..., description="语言名称")
+    file_ext: str = Field(..., description="代码文件扩展名，如 .py / .cpp")
+    run_cmd: str = Field(..., description="运行命令，如 python3 {src}")
+    compile_cmd: str | None = Field(None, description="编译命令，如 g++ {src} -o {exe}")
+    time_limit: float | None = Field(None, description="语言默认时间限制（秒）")
+    memory_limit: int | None = Field(None, description="语言默认内存限制（MB）")
