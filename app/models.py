@@ -80,3 +80,21 @@ class RoleUpdate(BaseModel):
     """用户角色变更请求体。"""
 
     role: str = Field(..., description="新角色：admin / user / banned")
+
+
+class ModelConfigBody(BaseModel):
+    """AI 模型配置请求体（Advance）。"""
+
+    provider_url: str = Field(..., description="模型提供商 URL")
+    model: str = Field(..., description="模型名称")
+    api_key: str = Field(..., description="模型密钥")
+    input_price: float | None = Field(None, description="输入 Token 单价")
+    output_price: float | None = Field(None, description="输出 Token 单价")
+    price_unit: int | None = Field(None, description="计价 Token 数量单位，如 1000000")
+
+
+class AITaskCreate(BaseModel):
+    """AI 命题任务创建请求体（Advance）。"""
+
+    requirement: str = Field(..., description="命题需求")
+    problem_id: str | None = Field(None, description="需要参考或修改的已有题目编号")
