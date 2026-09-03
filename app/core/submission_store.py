@@ -108,3 +108,37 @@ class SubmissionStore:
             return self._row_to_dict(row) if row else None
         finally:
             conn.close()
+
+    def list(self, user_id=None, problem_id=None, status=None, page=None, page_size=None):
+        """按条件查询提交列表，返回 (total, submissions)。
+
+        - 过滤条件均为可选，None 表示不限制；
+        - page / page_size：同时为 None 查全部；同时非 None 分页（page 从 1 开始）。
+        """
+        conditions = []
+        params = []
+        if user_id is not None:
+            conditions.append("user_id = ?")
+            params.append(user_id)
+        if problem_id is not None:
+            conditions.append("problem_id = ?")
+            params.append(problem_id)
+        if status is not None:
+            conditions.append("status = ?")
+            params.append(status)
+        where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
+
+        conn = self._connect()
+        try:
+            total = conn.execute(f"SELECT COUNT(*) FROM submissions{where}", params).fetchone()[0]
+            query_params = list(params)
+            limit_sql = ""
+            if page is not None and page_size is not None:
+                limit_sql = " LIMIT ? OFFSET ?"
+                query_params.extend([page_size, (page - 1) * page_size])
+            rows = conn.execute(
+                f"SELECT * FROM submissions{where} ORDER BY rowid DESC{limit_sql}", query_params
+            ).fetchall()
+            return total, [self._row_to_dict(r) for r in rows]
+        finally:
+            conn.close()
