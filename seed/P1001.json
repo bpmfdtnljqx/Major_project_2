@@ -1,0 +1,21 @@
+{
+  "id": "P1001",
+  "title": "A+B Problem",
+  "description": "输入两个整数 a, b，输出它们的和（|a|,|b| <= 10^9）。",
+  "input_description": "输入两个整数 a 和 b。",
+  "output_description": "输出 a+b 的结果。",
+  "samples": [
+    {"input": "1 2", "output": "3"}
+  ],
+  "constraints": "|a|,|b| <= 10^9",
+  "testcases": [
+    {"input": "1 2", "output": "3"}
+  ],
+  "hint": "有负数哦！",
+  "source": "洛谷",
+  "tags": ["基础题"],
+  "time_limit": 1.0,
+  "memory_limit": 128,
+  "author": "Luogu",
+  "difficulty": "入门"
+}
