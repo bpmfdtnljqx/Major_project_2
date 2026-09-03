@@ -13,13 +13,14 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.core.access_log_store import AccessLogStore
 from app.core.language_store import LanguageStore
 from app.core.rate_limit import RateLimiter
 from app.core.response import AppError, error_response
 from app.core.storage import ProblemStore
 from app.core.submission_store import SubmissionStore
 from app.core.user_store import UserStore
-from app.routers import languages, problems, submissions, users
+from app.routers import languages, logs, problems, submissions, users
 
 # 项目根目录（app/ 的上一级）
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -40,6 +41,7 @@ def create_app() -> FastAPI:
     # 初始化提交存储（SQLite）与频率限制
     app.state.submission_store = SubmissionStore(BASE_DIR / "data" / "oj.db")
     app.state.user_store = UserStore(BASE_DIR / "data" / "oj.db")
+    app.state.access_log_store = AccessLogStore(BASE_DIR / "data" / "oj.db")
     app.state.rate_limiter = RateLimiter()
     app.state.judge_tasks = set()  # 持有后台评测任务引用，防被 GC
 
@@ -48,6 +50,7 @@ def create_app() -> FastAPI:
     app.include_router(languages.router, prefix="/api")
     app.include_router(submissions.router, prefix="/api")
     app.include_router(users.router, prefix="/api")
+    app.include_router(logs.router, prefix="/api")
 
     _register_exception_handlers(app)
     return app
