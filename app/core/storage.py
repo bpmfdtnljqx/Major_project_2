@@ -69,6 +69,15 @@ class ProblemStore:
         self._problems.pop(problem_id, None)
         (self.problems_dir / f"{problem_id}.json").unlink(missing_ok=True)
 
+    def update_public_cases(self, problem_id: str, public_cases: bool) -> Problem | None:
+        """更新题目的日志可见性，返回更新后的题目；不存在返回 None。"""
+        problem = self._problems.get(problem_id)
+        if problem is None:
+            return None
+        problem.public_cases = public_cases
+        self._write(problem)
+        return problem
+
     # ---- 内部 ----
     def _write(self, problem: Problem) -> None:
         path = self.problems_dir / f"{problem.id}.json"
