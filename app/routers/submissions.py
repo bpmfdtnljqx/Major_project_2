@@ -1,6 +1,7 @@
 """提交评测路由（Step 2 / Step 3）。
 
 POST /api/submissions/                  —— 提交代码，异步评测，立即返回 pending。
+GET  /api/submissions/                  —— 查询评测列表（过滤 + 分页）。
 GET  /api/submissions/{submission_id}   —— 查询评测结果。
 评测任务在后台通过 asyncio.to_thread 运行阻塞的 judge，完成后回写 SQLite。
 """
@@ -77,6 +78,42 @@ async def get_submission(request: Request, submission_id: str):
         "error_info": sub["error_info"],
     }
     return ok(data=data)
+
+
+@router.get("/submissions/")
+async def list_submissions(
+    request: Request,
+    user_id: str | None = None,
+    problem_id: str | None = None,
+    status: str | None = None,
+    page: int | None = None,
+    page_size: int | None = None,
+):
+    """查询评测列表（Step 3）。"""
+    # 一级条件不可同时为空
+    if user_id is None and problem_id is None:
+        raise AppError(400, "user_id or problem_id required")
+    # 分页规则：page 非空但 page_size 空 → 400；page 空但 page_size 非空 → 取第一页
+    if page is not None and page_size is None:
+        raise AppError(400, "page_size required")
+    if page is None and page_size is not None:
+        page = 1
+
+    store = request.app.state.submission_store
+    total, submissions = store.list(user_id, problem_id, status, page, page_size)
+
+    items = []
+    for s in submissions:
+        if s["status"] in ("error", "pending"):
+            items.append({"submission_id": s["submission_id"], "status": s["status"]})
+        else:
+            items.append({
+                "submission_id": s["submission_id"],
+                "status": s["status"],
+                "score": s["score"],
+                "counts": s["counts"],
+            })
+    return ok(data={"total": total, "submissions": items})
 
 
 async def _judge_task(submission_store, problem, language, code, submission_id):
