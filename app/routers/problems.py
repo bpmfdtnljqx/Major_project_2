@@ -20,7 +20,7 @@ router = APIRouter()
 
 def _store(request: Request):
     """从应用状态中取出题目存储实例。"""
-    return request.app.state.store
+    return request.app.state.problem_store
 
 
 @router.get("/problems/")
