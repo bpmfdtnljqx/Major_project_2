@@ -14,9 +14,11 @@ from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.core.language_store import LanguageStore
+from app.core.rate_limit import RateLimiter
 from app.core.response import AppError, error_response
 from app.core.storage import ProblemStore
-from app.routers import languages, problems
+from app.core.submission_store import SubmissionStore
+from app.routers import languages, problems, submissions
 
 # 项目根目录（app/ 的上一级）
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -34,9 +36,15 @@ def create_app() -> FastAPI:
     # 初始化语言存储：内置默认语言 + 动态注册语言
     app.state.language_store = LanguageStore(BASE_DIR / "data" / "languages.json")
 
+    # 初始化提交存储（SQLite）与频率限制
+    app.state.submission_store = SubmissionStore(BASE_DIR / "data" / "oj.db")
+    app.state.rate_limiter = RateLimiter()
+    app.state.judge_tasks = set()  # 持有后台评测任务引用，防被 GC
+
     # 挂载路由
     app.include_router(problems.router, prefix="/api")
     app.include_router(languages.router, prefix="/api")
+    app.include_router(submissions.router, prefix="/api")
 
     _register_exception_handlers(app)
     return app
