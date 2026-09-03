@@ -44,6 +44,7 @@ class AIStore:
                 """
                 CREATE TABLE IF NOT EXISTS ai_tasks (
                     task_id     TEXT PRIMARY KEY,
+                    user_id     TEXT,
                     requirement TEXT NOT NULL,
                     problem_id  TEXT,
                     status      TEXT NOT NULL DEFAULT 'pending',
@@ -91,13 +92,13 @@ class AIStore:
             conn.close()
 
     # ---- AI 任务 ----
-    def create_task(self, task_id: str, requirement: str, problem_id: str | None = None) -> None:
+    def create_task(self, task_id: str, requirement: str, problem_id: str | None = None, user_id: str | None = None) -> None:
         conn = self._connect()
         try:
             conn.execute(
-                "INSERT INTO ai_tasks (task_id, requirement, problem_id, status, created_at) "
-                "VALUES (?, ?, ?, 'pending', ?)",
-                (task_id, requirement, problem_id, datetime.now().isoformat(timespec="seconds")),
+                "INSERT INTO ai_tasks (task_id, user_id, requirement, problem_id, status, created_at) "
+                "VALUES (?, ?, ?, ?, 'pending', ?)",
+                (task_id, user_id, requirement, problem_id, datetime.now().isoformat(timespec="seconds")),
             )
             conn.commit()
         finally:
