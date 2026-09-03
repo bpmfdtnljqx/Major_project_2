@@ -11,8 +11,9 @@ import asyncio
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
+from app.core.auth import get_admin, get_current_user
 from app.core.judge import judge
 from app.core.response import AppError, ok
 from app.models import SubmissionCreate
@@ -32,7 +33,7 @@ def _stores(request: Request):
 
 
 @router.post("/submissions/")
-async def create_submission(request: Request, body: SubmissionCreate):
+async def create_submission(request: Request, body: SubmissionCreate, current: dict = Depends(get_current_user)):
     problem_store, language_store, submission_store = _stores(request)
 
     # 校验题目与语言存在
@@ -43,8 +44,8 @@ async def create_submission(request: Request, body: SubmissionCreate):
     if language is None:
         raise AppError(404, "language not found")
 
-    # 频率限制（按用户；当前无登录用户，暂以匿名传入）
-    user_id = getattr(request.state, "user_id", None)
+    # 频率限制（按用户）
+    user_id = current["user_id"]
     if not request.app.state.rate_limiter.check(user_id):
         raise AppError(429, "too many submissions")
 
@@ -63,12 +64,14 @@ async def create_submission(request: Request, body: SubmissionCreate):
 
 
 @router.get("/submissions/{submission_id}")
-async def get_submission(request: Request, submission_id: str):
-    """查询评测结果（Step 3）。"""
+async def get_submission(request: Request, submission_id: str, current: dict = Depends(get_current_user)):
+    """查询评测结果（Step 3，本人或管理员）。"""
     store = request.app.state.submission_store
     sub = store.get(submission_id)
     if sub is None:
         raise AppError(404, "submission not found")
+    if current["role"] != "admin" and sub["user_id"] != current["user_id"]:
+        raise AppError(403, "permission denied")
     data = {
         "submission_id": sub["submission_id"],
         "status": sub["status"],
@@ -89,8 +92,14 @@ async def list_submissions(
     status: str | None = None,
     page: int | None = None,
     page_size: int | None = None,
+    current: dict = Depends(get_current_user),
 ):
-    """查询评测列表（Step 3）。"""
+    """查询评测列表（Step 3，本人或管理员）。"""
+    # 权限：普通用户只能查自己的提交
+    if current["role"] != "admin":
+        if user_id is not None and user_id != current["user_id"]:
+            raise AppError(403, "permission denied")
+        user_id = current["user_id"]
     # 一级条件不可同时为空
     if user_id is None and problem_id is None:
         raise AppError(400, "user_id or problem_id required")
@@ -118,8 +127,8 @@ async def list_submissions(
 
 
 @router.put("/submissions/{submission_id}/rejudge")
-async def rejudge_submission(request: Request, submission_id: str):
-    """重新评测（Step 3）：覆盖原结果，异步重跑。"""
+async def rejudge_submission(request: Request, submission_id: str, _: dict = Depends(get_admin)):
+    """重新评测（Step 3，仅管理员）：覆盖原结果，异步重跑。"""
     problem_store = request.app.state.problem_store
     language_store = request.app.state.language_store
     submission_store = request.app.state.submission_store
