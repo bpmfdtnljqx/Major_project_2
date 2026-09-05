@@ -31,17 +31,31 @@
   <script>
     var editor = document.getElementById("editor");
     var INDENT = "    ";
+    var firstRender = true;
+    var debounceTimer = null;
 
-    function emit() {
+    function send() {
       if (window.Streamlit && window.Streamlit.setComponentValue) {
         window.Streamlit.setComponentValue(editor.value);
       }
     }
 
-    // 在光标处插入文本，返回光标结束位置
+    // 输入：防抖回传（避免每次击键触发整页 rerun 造成闪烁）
+    function scheduleSend() {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(send, 350);
+    }
+
     function insertAt(start, end, text) {
       editor.value = editor.value.slice(0, start) + text + editor.value.slice(end);
       return start + text.length;
+    }
+
+    // 在光标处插入文本，保留选区
+    function applyEdit(start, end, newValue) {
+      editor.value = newValue;
+      editor.selectionStart = start;
+      editor.selectionEnd = end;
     }
 
     editor.addEventListener("keydown", function (e) {
@@ -52,7 +66,8 @@
       if (!e.shiftKey) {
         // 缩进
         if (start === end) {
-          editor.selectionStart = editor.selectionEnd = insertAt(start, end, INDENT);
+          var p = insertAt(start, end, INDENT);
+          editor.selectionStart = editor.selectionEnd = p;
         } else {
           var lineStart = editor.value.lastIndexOf("\n", start - 1) + 1;
           var sel = editor.value.slice(lineStart, end);
@@ -62,12 +77,11 @@
           editor.selectionEnd = end + (added.length - sel.length);
         }
       } else {
-        // 反缩进：每行去掉开头最多 4 个空格
+        // 反缩进：每行开头去掉最多 4 个空格
         var ls = editor.value.lastIndexOf("\n", start - 1) + 1;
         var blk = editor.value.slice(ls, end);
         var out = blk.replace(/^( {1,4})/gm, "");
         var removedStart = 0;
-        // 计算选区起点所在行被去掉的空格数，用于校正光标
         var cursorLine = editor.value.slice(ls, start);
         var lead = cursorLine.match(/^( {1,4})/);
         if (lead) removedStart = lead[1].length;
@@ -75,17 +89,33 @@
         editor.selectionStart = Math.max(start - removedStart, ls);
         editor.selectionEnd = editor.selectionStart + (out.length - (end - ls - removedStart));
       }
-      emit();
+      scheduleSend();
     });
 
-    editor.addEventListener("input", emit);
+    // 普通输入：防抖回传
+    editor.addEventListener("input", scheduleSend);
+    // 失焦：立即回传，保证提交/切页前值已同步
+    editor.addEventListener("blur", function () {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      send();
+    });
 
     function onRender(event) {
       var props = event.detail.args || {};
-      if (typeof props.code === "string" && props.code !== editor.value) {
-        editor.value = props.code;
+      if (typeof props.height === "number") {
+        editor.style.height = props.height + "px";
       }
-      if (props.height) editor.style.height = props.height + "px";
+      // 仅在"编辑器未被聚焦"时应用外部传入的 code（避免与用户输入竞争造成闪烁/丢字）。
+      // 首次渲染一定应用；之后若用户在输入中，绝不覆盖。
+      if (typeof props.code === "string") {
+        var isTyping = document.activeElement === editor;
+        if (firstRender) {
+          editor.value = props.code;
+          firstRender = false;
+        } else if (!isTyping && props.code !== editor.value) {
+          editor.value = props.code;
+        }
+      }
     }
     if (window.Streamlit) {
       window.Streamlit.events.addEventListener(window.Streamlit.RENDER_EVENT, onRender);
