@@ -1,5 +1,6 @@
 """AI 智能命题路由（Advance）。
 
+- GET  /api/ai/model-config               查询当前生效的模型配置
 - PUT  /api/ai/model-config                配置模型
 - POST /api/ai/problem-tasks/              创建命题任务（异步）
 - GET  /api/ai/problem-tasks/{task_id}     查询任务状态 / 结果
@@ -24,17 +25,73 @@ def _authorized(task: dict, current: dict) -> bool:
     return current["role"] == "admin" or task.get("user_id") == current["user_id"]
 
 
+def _mask(key: str | None) -> str | None:
+    """密钥打码：仅显示后 4 位，避免明文泄露。"""
+    if not key:
+        return None
+    return "****" + key[-4:]
+
+
+@router.get("/ai/model-config")
+async def get_model_config(request: Request, _: dict = Depends(get_current_user)):
+    """查询当前生效的模型配置（不含明文密钥）。
+
+    DB 已保存配置则优先展示 DB，否则回退到 .env 环境变量默认值。
+    """
+    from app.core import llm  # 局部导入避免循环
+
+    db = request.app.state.ai_store.get_config() or {}
+    effective_key = db.get("api_key") or llm.REAL_API_KEY
+    source = "db" if db.get("api_key") else ("env" if llm.REAL_API_KEY else "none")
+
+    return ok(data={
+        "provider_url": db.get("provider_url") or llm.REAL_BASE_URL,
+        "model": db.get("model") or llm.REAL_MODEL,
+        "input_price": db.get("input_price"),
+        "output_price": db.get("output_price"),
+        "price_unit": db.get("price_unit"),
+        "key_configured": bool(effective_key),
+        "key_hint": _mask(effective_key),
+        "source": source,
+        "use_mock": llm.USE_MOCK,
+    })
+
+
 @router.put("/ai/model-config")
 async def set_model_config(request: Request, body: ModelConfigBody, _: dict = Depends(get_current_user)):
-    """配置模型（api_key 不通过查询接口返回明文）。"""
-    request.app.state.ai_store.set_config(
-        body.provider_url, body.model, body.api_key,
+    """配置模型（api_key 不通过查询接口返回明文；留空则沿用当前密钥）。"""
+    from app.core import llm  # 局部导入避免循环
+
+    store = request.app.state.ai_store
+    current = store.get_config() or {}
+
+    if body.api_key:
+        # 显式提供新密钥：直接保存（覆盖）
+        api_key = body.api_key
+    elif current.get("api_key"):
+        # 留空但有已存密钥：沿用 DB 密钥，仅更新其余字段
+        api_key = current["api_key"]
+    else:
+        # 留空且 DB 无密钥：不落库，保持 .env 回退，仅提示
+        api_key = llm.REAL_API_KEY or ""
+        return ok(data={
+            "provider_url": body.provider_url,
+            "model": body.model,
+            "input_price": body.input_price,
+            "output_price": body.output_price,
+            "price_unit": body.price_unit,
+            "key_configured": bool(api_key),
+            "note": "未保存 api_key，将沿用 .env 环境变量配置",
+        }, msg="using env config (key not changed)")
+
+    store.set_config(
+        body.provider_url, body.model, api_key,
         body.input_price, body.output_price, body.price_unit,
     )
     return ok(data={
         "provider_url": body.provider_url,
         "model": body.model,
-        "api_key_configured": True,
+        "api_key_configured": bool(api_key),
         "input_price": body.input_price,
         "output_price": body.output_price,
         "price_unit": body.price_unit,

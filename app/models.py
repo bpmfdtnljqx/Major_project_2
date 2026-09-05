@@ -87,7 +87,7 @@ class ModelConfigBody(BaseModel):
 
     provider_url: str = Field(..., description="模型提供商 URL")
     model: str = Field(..., description="模型名称")
-    api_key: str = Field(..., description="模型密钥")
+    api_key: str | None = Field(None, description="模型密钥；留空表示沿用当前已保存/环境变量的密钥")
     input_price: float | None = Field(None, description="输入 Token 单价")
     output_price: float | None = Field(None, description="输出 Token 单价")
     price_unit: int | None = Field(None, description="计价 Token 数量单位，如 1000000")
