@@ -19,6 +19,11 @@ if api_client.is_logged_in():
         st.rerun()
     st.info("请在左侧导航选择「用户」「题目」或「评测提交」页面进行操作。")
 else:
+    # 显示一次跨页面携带的消息（如系统重置完成提示），然后清除
+    if "global_msg" in st.session_state:
+        st.success(st.session_state["global_msg"])
+        del st.session_state["global_msg"]
+
     tab_login, tab_register = st.tabs(["登录", "注册"])
 
     with tab_login:
@@ -31,7 +36,12 @@ else:
                     st.success("登录成功")
                     st.rerun()
                 else:
-                    st.error(body.get("msg", "登录失败"))
+                    # 账号被封禁时给醒目提示，与普通密码错误区分
+                    msg = body.get("msg", "登录失败")
+                    if status == 403 and ("banned" in str(msg).lower() or "禁用" in str(msg)):
+                        st.error("该账号已被封禁，请联系管理员。", icon="🚫")
+                    else:
+                        st.error(msg)
 
     with tab_register:
         with st.form("register_form"):
