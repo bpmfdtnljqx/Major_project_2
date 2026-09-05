@@ -49,6 +49,12 @@ if problems:
             st.markdown(f"**时间 / 内存限制**：{d['time_limit']}s / {d['memory_limit']}MB")
             if d["tags"]:
                 st.markdown(f"**标签**：{', '.join(d['tags'])}")
+            if d.get("public_cases"):
+                st.caption("🔓 该题测试点日志对所有人公开")
+            # 去做题（跳到评测页并自动选中此题）
+            if st.button("去做题 / 提交", key=f"go_{d['id']}", type="primary"):
+                st.session_state["pending_problem"] = d["id"]
+                st.switch_page("pages/3_Submissions.py")
             if user["role"] == "admin":
                 if st.button("删除此题", key=f"del_{d['id']}"):
                     s3, b3 = api_client.request("DELETE", f"/api/problems/{d['id']}")
