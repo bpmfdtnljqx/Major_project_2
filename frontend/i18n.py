@@ -16,6 +16,11 @@ LANG_LABELS = {"zh": "中文 / Chinese", "en": "English / 英文"}
 _STRINGS = {
     # ================= 通用 =================
     "app.title": {"zh": "在线评测系统", "en": "Online Judge"},
+    "nav.problems": {"zh": "题目", "en": "Problems"},
+    "nav.solve": {"zh": "做题", "en": "Solve"},
+    "nav.profile": {"zh": "我的", "en": "Profile"},
+    "nav.ai": {"zh": "AI 命题", "en": "AI Generate"},
+    "sidebar.user": {"zh": "当前用户", "en": "Signed in as"},
     "login_required": {"zh": "请先登录", "en": "Please log in first"},
     "not_logged_tip": {
         "zh": "请在左侧导航选择「用户」「题目」或「做题」页面进行操作。",
