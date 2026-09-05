@@ -1,288 +1,282 @@
-"""前端高级感主题（CSS 变量驱动，支持亮/暗双模式）。
+"""前端高级感主题（CSS 覆盖暗/亮双模式）。
 
-配色架构：
-- 所有颜色以 CSS 变量定义在 :root（默认 = 暗色 palette）。
-- 亮色模式通过追加一段 <style> 重定义 :root 变量实现（同优先级后者生效，
-  由浏览器在绘制时读取，故可即时切换自定义内容与绝大多数被覆盖的原生控件）。
-- 克制、精致、非塑料：炭蓝黑底 + 单点暖琥珀强调（暗色）；暖白纸感 + 琥珀强调（亮色）。
-
-用法：
-    theme.inject()                      # app.py 顶部调用，按 session 模式注入
-    theme.current_mode() -> "dark"|"light"
-    theme.toggle()                       # 切换并 st.rerun（放顶栏）
+设计原则（经过用户截图验证后重写）：
+- 直接给 Streamlit 控件明确的 CSS 选择器 + 具体 hex 色，**不依赖 CSS 变量/color-mix**，
+  确保 base=dark/light 任一状态下都能生效。
+- 暗色：炭蓝黑底 + 单点琥珀强调
+- 亮色：暖白纸感底 + 琥珀强调（**绝不用纯白雪白配字**）
 """
 
 import streamlit as st
 
-# ---- 暗色 palette（默认） ----
-DARK = {
-    "bg0": "#0b0f14", "bg1": "#10161e",
-    "card": "#141b24", "raised": "#1a232e",
-    "line": "#222c37", "line_hi": "#2e3b4a",
-    "text": "#e6ebf2", "dim": "#9aa7b6", "faint": "#66727f",
-    "accent": "#e6b47a", "accent_dim": "#c08f4e",
-    "ok": "#7ec8a3", "err": "#e07b6a", "info": "#7aa2d8",
-}
+# ---- 暗色 palette ----
+DARK = dict(
+    bg_grad_a="#15202c", bg_grad_b="#0b0f14", bg_grad_c="#10161e",
+    card="#141b24", raised="#1a232e",
+    line="#222c37", line_hi="#2e3b4a",
+    text="#e6ebf2", dim="#9aa7b6", faint="#7c8896",
+    accent="#e6b47a", accent_dim="#c08f4e",
+    ok="#7ec8a3", err="#e07b6a", info="#7aa2d8",
+    input_bg="#1a232e", code_bg="#0d1218",
+)
 
-# ---- 亮色 palette ----
-LIGHT = {
-    "bg0": "#f5f2ec", "bg1": "#ffffff",
-    "card": "#ffffff", "raised": "#efeae2",
-    "line": "#e2dcd1", "line_hi": "#cdc4b4",
-    "text": "#27221b", "dim": "#5a5346", "faint": "#8a8172",
-    "accent": "#b5712c", "accent_dim": "#8f5a22",
-    "ok": "#2f8a57", "err": "#bd4335", "info": "#3c639b",
-}
+# ---- 亮色 palette：暖白纸感，绝不用雪白配字 ----
+LIGHT = dict(
+    bg_grad_a="#ece7dd", bg_grad_b="#f5f2ec", bg_grad_c="#fbf9f4",
+    card="#fbf9f4", raised="#efeae2",
+    line="#d8d0c2", line_hi="#b9b0a0",
+    text="#2a241d", dim="#5a5346", faint="#8a8172",
+    accent="#b5712c", accent_dim="#8f5a22",
+    ok="#2f8a57", err="#bd4335", info="#3c639b",
+    input_bg="#fdfcf8", code_bg="#efeae2",
+)
 
 
-def _vars(p: dict) -> str:
-    return "\n".join(f"  --{k}: {v};" for k, v in p.items())
+def _vars(p):
+    return "\n".join(f"--{k}:{v};" for k, v in p.items())
 
 
 def current_mode() -> str:
     return st.session_state.get("ui_theme", "dark")
 
 
-def toggle() -> str:
-    """切换亮/暗，返回新模式。调用后由调用方 st.rerun。"""
-    nxt = "light" if current_mode() == "dark" else "dark"
-    st.session_state["ui_theme"] = nxt
-    return nxt
+def toggle():
+    st.session_state["ui_theme"] = "light" if current_mode() == "dark" else "dark"
 
 
 def inject() -> None:
-    """注入主题。:root 始终定义暗色 palette；亮色模式追加覆盖。"""
-    root_dark = f"<style>:root{{{_vars(DARK)}}}</style>"
-    st.markdown(_BASE_CSS, unsafe_allow_html=True)
-    st.markdown(root_dark, unsafe_allow_html=True)
-    if current_mode() == "light":
-        st.markdown(f"<style>:root{{{_vars(LIGHT)}}}</style>", unsafe_allow_html=True)
+    pal = LIGHT if current_mode() == "light" else DARK
+    mood = "亮" if current_mode() == "light" else "暗"
 
+    css = f"""
+<style id="wb-theme">
+/* ============ 关键：覆盖 Streamlit 默认背景/文字（不用变量，避免失效） ============ */
+.stApp, [data-testid="stAppViewContainer"], .main {{
+    background: linear-gradient(180deg, {pal['bg_grad_a']} 0%, {pal['bg_grad_b']} 60%, {pal['bg_grad_c']} 100%) !important;
+    color: {pal['text']} !important;
+}}
+.stApp h1, .stApp h2, .stApp h3, .stApp h4 {{
+    color: {pal['text']} !important;
+}}
+/* 文本类（含 markdown/正文/链接默认色）*/
+.stApp p, .stApp span, .stApp div, .stApp label {{
+    color: {pal['text']};
+}}
+.stApp a {{ color: {pal['info']}; }}
 
-# =====================================================================
-# 全局基础样式（所有颜色走 var()）
-# =====================================================================
-_BASE_CSS = """
-<style>
-/* ============ 根/背景 ============ */
-.stApp {
-    background:
-        radial-gradient(1200px 600px at 15% -10%, var(--bg0), transparent 60%),
-        radial-gradient(1000px 500px at 100% 0%, var(--bg1), transparent 55%),
-        linear-gradient(180deg, var(--bg0) 0%, var(--bg1) 100%) !important;
-    color: var(--text);
-}
-[data-testid="stAppViewContainer"] { background: transparent !important; }
-
-/* ============ 字体 ============ */
-html, body, [class*="css"], .stMarkdown, .stText, .stCaption, p, span, div, label {
-    font-family: "Inter", -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-}
-code, pre, .stCodeBlock, textarea { font-family: "SF Mono","JetBrains Mono",Consolas,monospace !important; }
-[data-testid="stMain"] { padding-top: 1.1rem; }
-.block-container { max-width: 1200px; padding-top: 1.4rem; padding-bottom: 4rem; }
-
-/* ============ 标题 ============ */
-h1 { font-weight: 760; letter-spacing: -.02em; font-size: 1.8rem; color: var(--text); }
-h2 { font-weight: 720; letter-spacing: -.01em; color: var(--text); }
-h3 { font-weight: 660; color: var(--text); }
-h1,h2,h3 { margin-bottom: .3rem; }
-
-/* 小字（caption/提示）显式跟随主题色，亮色下也清晰 */
-.stCaption, [data-testid="stCaptionContainer"] p,
-.small, [class*="caption"], .stMarkdown small {
-    color: var(--dim) !important;
-}
-.stCaption { opacity: 1 !important; }
-
-/* ============ 卡片容器 ============ */
-.stExpander {
-    border: 1px solid var(--line) !important; border-radius: 14px !important;
-    background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.18); overflow: hidden;
-}
-.stExpander:hover { border-color: var(--line_hi) !important; }
-.stExpander [data-testid="stExpanderDetails"] {
-    background: linear-gradient(180deg, var(--raised), var(--card));
-    border-top: 1px solid var(--line);
-}
-
-/* ============ 按钮 ============ */
-.stButton > button, .stFormSubmitButton > button, [data-testid="stBaseButton-secondary"] {
-    border-radius: 10px !important; font-weight: 600 !important;
-    transition: all .15s ease;
-    border: 1px solid var(--line_hi) !important;
-    background: var(--raised) !important; color: var(--text) !important;
-}
-.stButton > button:hover {
-    border-color: var(--accent_dim) !important; transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,.18);
-}
-[data-testid="stBaseButton-primary"] {
-    background: linear-gradient(180deg, var(--accent) 0%, var(--accent_dim) 100%) !important;
-    border: none !important; color: #fff !important; font-weight: 650 !important;
-    border-radius: 10px !important;
-    box-shadow: 0 1px 0 rgba(255,255,255,.2) inset, 0 2px 6px rgba(0,0,0,.18);
-}
-[data-testid="stBaseButton-primary"]:hover { filter: brightness(1.06); }
-
-/* ============ radio 导航胶囊 ============ */
-div[data-testid="stRadio"] > div { gap: .2rem; }
-div[data-testid="stRadio"] label { padding: .4rem .9rem; border-radius: 999px; color: var(--dim); transition: all .15s ease; }
-div[data-testid="stRadio"] label:hover { color: var(--text); background: var(--raised); }
-div[data-testid="stRadio"] [aria-checked="true"] {
-    background: var(--raised) !important; color: var(--accent) !important;
-    box-shadow: inset 0 0 0 1px var(--accent_dim); font-weight: 600;
-}
-
-/* ============ 输入类 ============ */
-/* 控件标签统一（selectbox/radio 上方的文字） */
+/* ============ 控件标签（统一字号/颜色） ============ */
 [data-testid="stWidgetLabel"] p,
 [data-testid="stWidgetLabel"] span,
-[data-testid="baseWidgetLabel"] p {
-    color: var(--dim) !important;
-    font-weight: 600 !important;
-    font-size: .88rem !important;
-    letter-spacing: .01em;
-}
-[data-baseweb="select"] > div, .stTextInput input, .stNumberInput input, .stTextArea textarea {
-    background: var(--raised) !important; border: 1px solid var(--line) !important;
-    border-radius: 10px !important; color: var(--text) !important;
-}
-[data-baseweb="select"]:hover > div, .stTextInput input:focus, .stTextArea textarea:focus {
-    border-color: var(--accent_dim) !important;
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent) !important;
-}
-[data-baseweb="popover"] [role="listbox"] { background: var(--card); border-radius: 10px; border: 1px solid var(--line); }
+[data-testid="stWidgetLabel"] label {{
+    color: {pal['dim']} !important;
+    font-weight: 600; font-size: .9rem !important;
+}}
 
-/* ============ 表格 ============ */
-[data-testid="stDataFrame"] { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-[data-testid="stDataFrame"] thead tr th {
-    background: var(--raised) !important; color: var(--dim) !important;
-    font-weight: 600; font-size: .8rem;
-}
+/* ============ 输入控件 ============ */
+.stTextInput input, .stTextArea textarea, .stNumberInput input,
+[data-baseweb="select"] > div {{
+    background: {pal['input_bg']} !important;
+    border: 1px solid {pal['line_hi']} !important;
+    border-radius: 10px !important;
+    color: {pal['text']} !important;
+    -webkit-text-fill-color: {pal['text']} !important;
+}}
+.stTextInput input::placeholder, .stTextArea textarea::placeholder {{
+    color: {pal['faint']} !important;
+    -webkit-text-fill-color: {pal['faint']} !important;
+}}
+.stTextInput input:focus, .stTextArea textarea:focus,
+[data-baseweb="select"]:focus-within > div,
+[data-baseweb="select"]:hover > div {{
+    border-color: {pal['accent']} !important;
+    box-shadow: 0 0 0 2px {pal['accent']}33 !important;
+}}
+[data-baseweb="popover"] [role="listbox"] {{
+    background: {pal['card']} !important;
+    color: {pal['text']} !important;
+    border: 1px solid {pal['line_hi']};
+}}
+[data-baseweb="popover"] [role="option"] {{ color: {pal['text']} !important; }}
 
-/* ============ metric ============ */
-[data-testid="stMetric"] {
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-    padding: .9rem 1rem; box-shadow: 0 1px 2px rgba(0,0,0,.15);
-}
-[data-testid="stMetricLabel"] { color: var(--dim); font-weight: 600; }
-[data-testid="stMetricValue"] { color: var(--text); font-weight: 720; font-size: 1.4rem; }
+/* ============ 按钮 ============ */
+.stButton > button, .stFormSubmitButton > button,
+[data-testid="stBaseButton-secondary"] {{
+    background: {pal['raised']} !important;
+    color: {pal['text']} !important;
+    border: 1px solid {pal['line_hi']} !important;
+    border-radius: 10px !important; font-weight: 600;
+    transition: all .15s ease;
+}}
+.stButton > button:hover {{ border-color: {pal['accent']} !important; }}
+[data-testid="stBaseButton-primary"] {{
+    background: linear-gradient(180deg, {pal['accent']}, {pal['accent_dim']}) !important;
+    color: #ffffff !important;
+    border: none !important; font-weight: 650;
+    border-radius: 10px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}}
+[data-testid="stBaseButton-primary"]:hover {{ filter: brightness(1.08); }}
+
+/* ============ radio 导航 ============ */
+div[data-testid="stRadio"] label {{
+    color: {pal['dim']} !important;
+    padding: .35rem .85rem; border-radius: 999px;
+    background: transparent; transition: all .15s ease;
+}}
+div[data-testid="stRadio"] label:hover {{
+    color: {pal['text']} !important; background: {pal['raised']};
+}}
+div[data-testid="stRadio"] [aria-checked="true"] {{
+    background: {pal['raised']} !important;
+    color: {pal['accent']} !important;
+    box-shadow: inset 0 0 0 1px {pal['accent']};
+    font-weight: 700 !important;
+}}
+
+/* ============ Tabs ============ */
+.stTabs [data-baseweb="tab-list"] {{ gap: .25rem; }}
+.stTabs [data-baseweb="tab"] {{
+    background: transparent !important;
+    color: {pal['dim']} !important;
+    padding: .4rem .9rem; border-radius: 8px;
+}}
+.stTabs [aria-selected="true"] {{
+    color: {pal['accent']} !important;
+    border-bottom: 2px solid {pal['accent']} !important;
+    font-weight: 700;
+}}
+
+/* ============ Expander 卡片（关键：解决"黑色大块"问题） ============ */
+.stExpander, details[data-testid="stExpander"] {{
+    background: {pal['card']} !important;
+    border: 1px solid {pal['line']} !important;
+    border-radius: 14px !important;
+    overflow: hidden;
+}}
+.stExpander summary, [data-testid="stExpanderToggle"] summary {{
+    background: {pal['card']} !important;
+    color: {pal['text']} !important;
+    border: none !important;
+}}
+.stExpander [data-testid="stExpanderDetails"],
+[data-testid="stExpander"] > div:last-child {{
+    background: {pal['card']} !important;
+    color: {pal['text']} !important;
+    border-top: 1px solid {pal['line']};
+}}
+
+/* ============ 关键修复：selectbox 下拉关闭时也是 input_bg（避免黑块） ============ */
+[data-baseweb="select"] [data-baseweb="select-value],
+[data-baseweb="select"] [data-baseweb="select-value] > div {{
+    color: {pal['text']} !important;
+}}
+
+/* ============ 代码块（解决黑块） ============ */
+.stCodeBlock, code, pre {{
+    background: {pal['code_bg']} !important;
+    color: {pal['text']} !important;
+    border: 1px solid {pal['line']};
+    border-radius: 10px;
+}}
+
+/* ============ Tabs 面板内/外背景 ============ */
+[data-baseweb="tab-panel"], [data-testid="stTabBody"] {{
+    background: transparent !important;
+}}
+
+/* ============ Form 容器 ============ */
+[data-testid="stForm"] {{
+    background: {pal['card']} !important;
+    border: 1px solid {pal['line']};
+    border-radius: 14px; padding: 1rem 1.2rem;
+}}
+
+/* ============ Metric 卡片 ============ */
+[data-testid="stMetric"] {{
+    background: {pal['card']}; border: 1px solid {pal['line']};
+    border-radius: 14px; padding: 1rem;
+}}
+[data-testid="stMetricLabel"] {{ color: {pal['dim']}; }}
+[data-testid="stMetricValue"] {{ color: {pal['text']}; font-weight: 720; }}
+
+/* ============ Dataframe 表格 ============ */
+[data-testid="stDataFrame"] {{
+    border: 1px solid {pal['line']};
+    border-radius: 12px; overflow: hidden;
+    background: {pal['card']};
+}}
+[data-testid="stDataFrame"] thead th {{
+    background: {pal['raised']} !important;
+    color: {pal['dim']} !important;
+}}
 
 /* ============ 侧边栏 ============ */
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, var(--bg0), var(--bg1)) !important;
-    border-right: 1px solid var(--line);
-}
-[data-testid="stSidebar"] * { color: var(--dim); }
+[data-testid="stSidebar"] {{
+    background: linear-gradient(180deg, {pal['bg_grad_a']}, {pal['bg_grad_b']}) !important;
+    border-right: 1px solid {pal['line']};
+}}
+[data-testid="stSidebar"] * {{ color: {pal['dim']}; }}
 
-/* ============ tabs ============ */
-.stTabs [data-baseweb="tab-list"] { gap: .3rem; }
-.stTabs [data-baseweb="tab"] { background: transparent !important; color: var(--dim) !important; border-radius: 8px !important; padding: .4rem .9rem; }
-.stTabs [aria-selected="true"] { color: var(--accent) !important; border-bottom: 2px solid var(--accent_dim) !important; font-weight: 600; }
+/* ============ 滚动条 ============ */
+::-webkit-scrollbar-thumb {{ background: {pal['line_hi']}; border-radius: 6px; }}
 
-/* ============ 提示 ============ */
-[data-testid="stAlert"] { border-radius: 12px; border-left-width: 3px; }
-[data-testid="stAlert"] > div:first-child { background: var(--card) !important; }
-div[data-baseweb="notification"] { background: var(--card) !important; border-radius: 12px; }
+/* ============ caption / 小字 ============ */
+.stCaption, [data-testid="stCaptionContainer"] p,
+.stMarkdown small {{ color: {pal['dim']} !important; }}
 
-/* ============ 分隔线 / 滚动条 ============ */
-hr { border-color: var(--line) !important; }
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: var(--line_hi); border-radius: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
+/* ============ 提示框 ============ */
+[data-testid="stAlert"] {{ border-radius: 12px; }}
+[data-testid="stAlert"] > div:first-child {{ background: {pal['card']} !important; }}
 
-/* 代码块 */
-.stCodeBlock { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.stCodeBlock pre { background: var(--raised) !important; }
-
-/* 链接 */
-a { color: var(--info); text-decoration: none; }
-a:hover { text-decoration: underline; }
-
-/* ============ 高级卡片组件 ============ */
-.hero { padding: .5rem .2rem 1rem .2rem; }
-.hero-chip {
+/* ============ 高级 HTML 卡片工具类 ============ */
+.hero {{ padding: .4rem .2rem .8rem; }}
+.hero-chip {{
     display:inline-block; font-size:.72rem; letter-spacing:.12em; text-transform:uppercase;
-    color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent);
-    border:1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-    border-radius:999px; padding:.18rem .7rem; margin-bottom:.7rem;
-}
-.hero-title { font-size:2rem; font-weight:780; letter-spacing:-.02em; line-height:1.1; color: var(--text); }
-.hero-sub { color: var(--dim); margin-top:.5rem; font-size:1rem; max-width:56rem; }
-
-.stat-card {
-    background: linear-gradient(180deg, var(--raised), var(--card));
-    border:1px solid var(--line); border-radius:14px; padding:1rem 1.1rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,.12); min-height: 96px;
-}
-.stat-label { color: var(--dim); font-size:.78rem; letter-spacing:.04em; }
-.stat-value { color: var(--text); font-size:1.7rem; font-weight:750; margin:.25rem 0 .1rem; letter-spacing:-.01em; }
-.stat-hint { color: var(--faint); font-size:.75rem; }
-
-/* 状态色小徽章 */
-.badge { display:inline-block; border-radius:999px; padding:.12rem .6rem; font-size:.76rem; font-weight:650; vertical-align:middle; }
-.badge-ok { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
-.badge-err { background: color-mix(in srgb, var(--err) 16%, transparent); color: var(--err); }
-.badge-warn { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
-.badge-info { background: color-mix(in srgb, var(--info) 16%, transparent); color: var(--info); }
-.badge-neu { background: color-mix(in srgb, var(--dim) 16%, transparent); color: var(--dim); }
-
-/* 分节标题（带左侧强调线） */
-.sec-title {
-    font-size:1.15rem; font-weight:720; color:var(--text);
-    padding-left:.6rem; border-left:3px solid var(--accent);
-    margin:1.1rem 0 .6rem 0; letter-spacing:-.01em;
-}
-
-/* 面板容器 */
-.panel {
-    background: linear-gradient(180deg, var(--card), var(--bg1));
-    border:1px solid var(--line); border-radius:16px;
-    padding:1.1rem 1.2rem; box-shadow: 0 1px 3px rgba(0,0,0,.10);
-}
-
-/* 题目难度标签 */
-.diff {
-    display:inline-block; border-radius:999px; padding:.12rem .7rem;
-    font-size:.74rem; font-weight:650; letter-spacing:.02em;
-    background: color-mix(in srgb, var(--dim) 14%, transparent); color: var(--dim);
-    border:1px solid transparent;
-}
-.diff-0 { color: var(--ok); background: color-mix(in srgb, var(--ok) 15%, transparent); }  /* 入门 */
-.diff-1 { color: var(--info); background: color-mix(in srgb, var(--info) 15%, transparent); }
-.diff-2 { color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); } /* 中等 */
-.diff-3 { color: var(--err); background: color-mix(in srgb, var(--err) 15%, transparent); }  /* 困难 */
-
-/* 标签 chip */
-.chip {
-    display:inline-block; border-radius:6px; padding:.08rem .5rem; font-size:.74rem;
-    background: var(--raised); color: var(--dim); border:1px solid var(--line);
+    color: {pal['accent']}; background: {pal['accent']}1f;
+    border:1px solid {pal['accent']}55; border-radius:999px; padding:.18rem .7rem;
+    margin-bottom:.6rem;
+}}
+.hero-title {{ font-size:1.9rem; font-weight:780; color: {pal['text']}; letter-spacing:-.02em; }}
+.hero-sub {{ color: {pal['dim']}; margin-top:.4rem; font-size:1rem; }}
+.stat-card {{
+    background: linear-gradient(180deg, {pal['raised']}, {pal['card']});
+    border:1px solid {pal['line']}; border-radius:14px; padding:1rem 1.1rem;
+    min-height: 96px;
+}}
+.stat-label {{ color: {pal['dim']}; font-size:.78rem; letter-spacing:.04em; }}
+.stat-value {{ color: {pal['text']}; font-size:1.7rem; font-weight:750; margin:.25rem 0 .1rem; }}
+.stat-hint {{ color: {pal['faint']}; font-size:.75rem; }}
+.sec-title {{
+    font-size:1.15rem; font-weight:720; color:{pal['text']};
+    padding-left:.6rem; border-left:3px solid {pal['accent']};
+    margin:1rem 0 .6rem; letter-spacing:-.01em;
+}}
+.diff {{ display:inline-block; border-radius:999px; padding:.12rem .7rem; font-size:.74rem; font-weight:650;
+    background: {pal['dim']}22; color: {pal['dim']}; }}
+.diff-0 {{ color:{pal['ok']}; background:{pal['ok']}1f; }}
+.diff-1 {{ color:{pal['info']}; background:{pal['info']}1f; }}
+.diff-2 {{ color:{pal['accent']}; background:{pal['accent']}1f; }}
+.diff-3 {{ color:{pal['err']}; background:{pal['err']}1f; }}
+.chip {{
+    display:inline-block; border-radius:6px; padding:.1rem .55rem; font-size:.74rem;
+    background: {pal['raised']}; color: {pal['dim']}; border:1px solid {pal['line']};
     margin-right:.35rem;
-}
+}}
+.badge {{ display:inline-block; border-radius:999px; padding:.12rem .6rem; font-size:.76rem; font-weight:650; }}
+.badge-ok {{ background: {pal['ok']}22; color: {pal['ok']}; }}
+.badge-err {{ background: {pal['err']}22; color: {pal['err']}; }}
+.badge-warn {{ background: {pal['accent']}22; color: {pal['accent']}; }}
+.badge-info {{ background: {pal['info']}22; color: {pal['info']}; }}
+.badge-neu {{ background: {pal['dim']}22; color: {pal['dim']}; }}
 
-/* 问题条目行（列表里的卡片） */
-.prob-row {
-    display:flex; align-items:center; gap:.9rem;
-    padding:.7rem 1rem; border-radius:12px; margin-bottom:.45rem;
-    border:1px solid var(--line); background: var(--card);
-    cursor:pointer; transition: all .15s ease;
-}
-.prob-row:hover { border-color: var(--line_hi); transform: translateX(2px); }
-.prob-row .pid { font-family:inherit; font-weight:700; color:var(--accent); min-width:6rem; }
-.prob-row .ptitle { font-weight:600; color:var(--text); flex:1; }
-.prob-row .pmeta { color:var(--faint); font-size:.8rem; }
-
-/* 编辑器面板标题 */
-.edit-head {
-    display:flex; justify-content:space-between; align-items:center;
-    color:var(--dim); font-size:.85rem; margin-bottom:.4rem;
-}
+/* 字体 */
+.stApp, .stApp *, code, pre {{ font-family: "Inter","PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif; }}
 </style>
 """
+    st.markdown(css, unsafe_allow_html=True)
 
 
-def hero(title: str, subtitle: str = "", chip: str | None = None) -> None:
+def hero(title, subtitle="", chip=None):
     chip_html = f'<span class="hero-chip">{chip}</span>' if chip else ""
     st.markdown(
         f'<div class="hero">{chip_html}<div class="hero-title">{title}</div>'
@@ -291,8 +285,7 @@ def hero(title: str, subtitle: str = "", chip: str | None = None) -> None:
     )
 
 
-def stat_cards(items: list[dict]) -> None:
-    """一行统计卡片。item: {label, value, hint?}"""
+def stat_cards(items):
     n = max(len(items), 1)
     cols = st.columns(n)
     for i, col in enumerate(cols):
@@ -306,45 +299,25 @@ def stat_cards(items: list[dict]) -> None:
             )
 
 
-def badge(text: str, kind: str = "info") -> None:
-    """状态徽章。kind: ok / err / warn / info / neu"""
-    st.markdown(f'<span class="badge badge-{kind}">{text}</span>', unsafe_allow_html=True)
-
-
-def section(title: str) -> None:
-    """分节标题。"""
+def section(title):
     st.markdown(f'<div class="sec-title">{title}</div>', unsafe_allow_html=True)
 
 
-def difficulty(d: str) -> None:
-    """按难度名给颜色级。"""
+def difficulty(d):
     d = (d or "").strip()
-    lvl = 0
-    low = ["入门", "简单", "easy", "beginner"]
-    mid = ["中等", "medium"]
-    hard = ["困难", "较难", "hard", "高级", "advanced"]
-    if any(x in d.lower() for x in hard):
-        lvl = 3
-    elif any(x in d.lower() for x in mid):
-        lvl = 2
-    elif any(x in d.lower() for x in low):
-        lvl = 1
-    if not d:
-        return
+    if not d: return
+    low = d.lower()
+    lvl = 3 if any(x in low for x in ["困难","hard","高级","advanced","较难"]) else \
+          2 if any(x in low for x in ["中等","medium"]) else \
+          1 if any(x in low for x in ["入门","简单","easy","beginner"]) else 0
     st.markdown(f'<span class="diff diff-{lvl}">{d}</span>', unsafe_allow_html=True)
 
 
-_STATUS_COLOR = {
-    "ac": "ok", "success": "ok",
-    "wa": "err", "error": "err", "ce": "err", "failed": "err",
-    "tle": "warn", "mle": "warn",
-    "re": "err", "pending": "neu", "running": "info", "queued": "neu",
-    "cancelled": "neu", "completed": "ok",
-}
+_STATUS = {"ac":"ok","success":"ok","wa":"err","error":"err","ce":"err","failed":"err",
+           "tle":"warn","mle":"warn","re":"err","pending":"neu","running":"info",
+           "queued":"neu","cancelled":"neu","completed":"ok"}
 
 
-def status_badge(s: str) -> str:
-    """把评测/任务状态映射成彩色徽章 html，返回字符串供拼接。"""
+def status_badge(s):
     k = str(s or "").lower()
-    kind = _STATUS_COLOR.get(k, "info")
-    return f'<span class="badge badge-{kind}">{s}</span>'
+    return f'<span class="badge badge-{_STATUS.get(k,"info")}">{s}</span>'
