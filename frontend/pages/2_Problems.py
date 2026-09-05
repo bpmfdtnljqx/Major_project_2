@@ -60,6 +60,12 @@ if problems:
 else:
     st.info("暂无题目")
 
+# ---- 题目管理（新增/编辑，仅管理员可见；后端保持文档合规） ----
+if user["role"] != "admin":
+    st.divider()
+    st.caption("仅教师 / 助教可新增或编辑题目；如需要请联系管理员。")
+    st.stop()
+
 # ---- 新增题目 ----
 st.divider()
 st.subheader("新增题目")
