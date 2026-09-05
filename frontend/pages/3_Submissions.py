@@ -3,20 +3,14 @@
 布局参考经典 OJ（题面在左，编辑器/提交在右）：
 - 顶部：题目选择（可被"题目"页的"去做题"自动带过来）
 - 左侧：题目详情（描述/输入输出/样例/限制/标签）
-- 右侧：代码编辑器（支持 Tab 缩进）+ 语言选择 + 提交按钮
+- 右侧：代码编辑器（Ace，支持 Tab 缩进/高亮）+ 语言选择 + 提交按钮
 - 下方：我的提交记录（含评测状态 / 编译运行信息 / 测试点明细）
 """
 
-import sys
-from pathlib import Path
-
 import streamlit as st
+from streamlit_ace import st_ace
 
-# 让页面能 import 顶层模块（frontend/ 下）与 components/
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-import api_client  # noqa: E402
-from components.code_editor import code_editor  # noqa: E402
+import api_client
 
 st.set_page_config(page_title="评测提交", layout="wide")
 
@@ -82,16 +76,27 @@ with right:
         st.warning("无可用语言")
     else:
         language = st.selectbox("语言", languages, key="sub_lang")
-        # 代码编辑器（保留上次草稿，Tab 可缩进）
-        draft_key = f"draft_{problem_id}"
-        code = code_editor(st.session_state.get(draft_key, ""), height=300, key=f"ce_{problem_id}")
+        # 语言 → Ace 高亮模式
+        ace_mode = {"python": "python", "cpp": "c_cpp"}.get(language, "plain_text")
+        # 代码编辑器（Ace，支持 Tab 缩进与语法高亮；auto_update=False 避免逐键闪烁）
+        code = st_ace(
+            value=st.session_state.get(f"draft_{problem_id}", ""),
+            language=ace_mode,
+            theme="monokai",
+            keybinding="vscode",
+            font_size=14,
+            tab_size=4,
+            min_lines=12,
+            auto_update=False,
+            key=f"ace_{problem_id}",
+        )
 
         if st.button("提交评测", type="primary"):
             if not code.strip():
                 st.error("代码不能为空")
             else:
                 # 保留草稿，便于重提交
-                st.session_state[draft_key] = code
+                st.session_state[f"draft_{problem_id}"] = code
                 s2, b2 = api_client.request(
                     "POST", "/api/submissions/",
                     json_body={"problem_id": problem_id, "language": language, "code": code},
