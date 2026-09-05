@@ -212,11 +212,63 @@ a:hover { text-decoration: underline; }
 .stat-hint { color: var(--faint); font-size:.75rem; }
 
 /* 状态色小徽章 */
-.badge { display:inline-block; border-radius:999px; padding:.1rem .6rem; font-size:.76rem; font-weight:600; }
+.badge { display:inline-block; border-radius:999px; padding:.12rem .6rem; font-size:.76rem; font-weight:650; vertical-align:middle; }
 .badge-ok { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
 .badge-err { background: color-mix(in srgb, var(--err) 16%, transparent); color: var(--err); }
-.badge-warn { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.badge-warn { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
 .badge-info { background: color-mix(in srgb, var(--info) 16%, transparent); color: var(--info); }
+.badge-neu { background: color-mix(in srgb, var(--dim) 16%, transparent); color: var(--dim); }
+
+/* 分节标题（带左侧强调线） */
+.sec-title {
+    font-size:1.15rem; font-weight:720; color:var(--text);
+    padding-left:.6rem; border-left:3px solid var(--accent);
+    margin:1.1rem 0 .6rem 0; letter-spacing:-.01em;
+}
+
+/* 面板容器 */
+.panel {
+    background: linear-gradient(180deg, var(--card), var(--bg1));
+    border:1px solid var(--line); border-radius:16px;
+    padding:1.1rem 1.2rem; box-shadow: 0 1px 3px rgba(0,0,0,.10);
+}
+
+/* 题目难度标签 */
+.diff {
+    display:inline-block; border-radius:999px; padding:.12rem .7rem;
+    font-size:.74rem; font-weight:650; letter-spacing:.02em;
+    background: color-mix(in srgb, var(--dim) 14%, transparent); color: var(--dim);
+    border:1px solid transparent;
+}
+.diff-0 { color: var(--ok); background: color-mix(in srgb, var(--ok) 15%, transparent); }  /* 入门 */
+.diff-1 { color: var(--info); background: color-mix(in srgb, var(--info) 15%, transparent); }
+.diff-2 { color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); } /* 中等 */
+.diff-3 { color: var(--err); background: color-mix(in srgb, var(--err) 15%, transparent); }  /* 困难 */
+
+/* 标签 chip */
+.chip {
+    display:inline-block; border-radius:6px; padding:.08rem .5rem; font-size:.74rem;
+    background: var(--raised); color: var(--dim); border:1px solid var(--line);
+    margin-right:.35rem;
+}
+
+/* 问题条目行（列表里的卡片） */
+.prob-row {
+    display:flex; align-items:center; gap:.9rem;
+    padding:.7rem 1rem; border-radius:12px; margin-bottom:.45rem;
+    border:1px solid var(--line); background: var(--card);
+    cursor:pointer; transition: all .15s ease;
+}
+.prob-row:hover { border-color: var(--line_hi); transform: translateX(2px); }
+.prob-row .pid { font-family:inherit; font-weight:700; color:var(--accent); min-width:6rem; }
+.prob-row .ptitle { font-weight:600; color:var(--text); flex:1; }
+.prob-row .pmeta { color:var(--faint); font-size:.8rem; }
+
+/* 编辑器面板标题 */
+.edit-head {
+    display:flex; justify-content:space-between; align-items:center;
+    color:var(--dim); font-size:.85rem; margin-bottom:.4rem;
+}
 </style>
 """
 
@@ -246,5 +298,44 @@ def stat_cards(items: list[dict]) -> None:
 
 
 def badge(text: str, kind: str = "info") -> None:
-    """状态徽章。kind: ok / err / warn / info"""
+    """状态徽章。kind: ok / err / warn / info / neu"""
     st.markdown(f'<span class="badge badge-{kind}">{text}</span>', unsafe_allow_html=True)
+
+
+def section(title: str) -> None:
+    """分节标题。"""
+    st.markdown(f'<div class="sec-title">{title}</div>', unsafe_allow_html=True)
+
+
+def difficulty(d: str) -> None:
+    """按难度名给颜色级。"""
+    d = (d or "").strip()
+    lvl = 0
+    low = ["入门", "简单", "easy", "beginner"]
+    mid = ["中等", "medium"]
+    hard = ["困难", "较难", "hard", "高级", "advanced"]
+    if any(x in d.lower() for x in hard):
+        lvl = 3
+    elif any(x in d.lower() for x in mid):
+        lvl = 2
+    elif any(x in d.lower() for x in low):
+        lvl = 1
+    if not d:
+        return
+    st.markdown(f'<span class="diff diff-{lvl}">{d}</span>', unsafe_allow_html=True)
+
+
+_STATUS_COLOR = {
+    "ac": "ok", "success": "ok",
+    "wa": "err", "error": "err", "ce": "err", "failed": "err",
+    "tle": "warn", "mle": "warn",
+    "re": "err", "pending": "neu", "running": "info", "queued": "neu",
+    "cancelled": "neu", "completed": "ok",
+}
+
+
+def status_badge(s: str) -> str:
+    """把评测/任务状态映射成彩色徽章 html，返回字符串供拼接。"""
+    k = str(s or "").lower()
+    kind = _STATUS_COLOR.get(k, "info")
+    return f'<span class="badge badge-{kind}">{s}</span>'

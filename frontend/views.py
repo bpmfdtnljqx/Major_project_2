@@ -28,97 +28,104 @@ def _require_login() -> bool:
 
 # ================= 用户 / 我的 =================
 def render_profile():
-    st.title(i18n.t("user.title"))
-
     if not _require_login():
         return
     user = api_client.current_user()
 
-    st.subheader(i18n.t("user.my_info"))
+    role_txt = {"admin": i18n.t("admin"), "user": "user", "banned": "banned"}.get(
+        user["role"], user["role"]
+    )
+    theme.hero(
+        title=f"👋 {user['username']}",
+        subtitle=f"{i18n.t('sidebar.user')} · {role_txt}",
+        chip=i18n.t("user.my_info"),
+    )
+
+    # 我的概览数据
     status, body = api_client.request("GET", f"/api/users/{user['user_id']}")
     if status == 200:
         info = body["data"]
-        st.write(f"{i18n.t('username')}：{info['username']}")
-        role_txt = {"admin": i18n.t("admin"), "user": "user", "banned": "banned"}.get(
-            info["role"], info["role"]
-        )
-        st.write(f"{i18n.t('user.role')}：{role_txt}")
-        st.write(f"{i18n.t('user.join_time')}：{info['join_time']}")
-        st.write(
-            f"{i18n.t('user.submits', n=info['submit_count'])}　"
-            f"{i18n.t('user.resolved', n=info['resolve_count'])}"
-        )
+        theme.stat_cards([
+            {"label": i18n.t("user.submits", n=info["submit_count"]), "value": info["submit_count"],
+             "hint": i18n.t("solve.my_records")},
+            {"label": i18n.t("user.resolved", n=info["resolve_count"]), "value": info["resolve_count"],
+             "hint": i18n.t("user.join_time")},
+        ])
+        st.caption(f"🕒 {i18n.t('user.join_time')}：{info['join_time']}　·　ID：{user['user_id']}")
+
+    if user["role"] == "admin":
+        _profile_admin_panel(user)
+
+
+def _profile_admin_panel(user) -> None:
+    """我的页的管理员面板：用户管理 + 创建管理员 + 系统重置。"""
+    st.divider()
+    theme.section(i18n.t("user.manage"))
+    status, body = api_client.request("GET", "/api/users/")
+    if status == 200:
+        data = body["data"]
+        st.caption(i18n.t("user.total", n=data["total"]))
+        roles = ["admin", "user", "banned"]
+        for u in data["users"]:
+            with st.expander(f"{u['username']}（{u['role']}）"):
+                st.caption(f"user_id：{u['user_id']}　·　{u['join_time']}")
+                c1, c2, c3 = st.columns([2, 1, 1])
+                with c1:
+                    new_role = st.selectbox(
+                        i18n.t("user.role"), roles,
+                        index=roles.index(u["role"]), key=f"role_{u['user_id']}",
+                    )
+                with c2:
+                    st.caption(f"⬆ {u['submit_count']}　✓ {u['resolve_count']}")
+                with c3:
+                    if st.button(i18n.t("user.update_role"), key=f"btn_{u['user_id']}"):
+                        s2, b2 = api_client.request(
+                            "PUT", f"/api/users/{u['user_id']}/role", json_body={"role": new_role}
+                        )
+                        if s2 == 200:
+                            st.success(i18n.t("user.role_updated"))
+                            st.rerun()
+                        else:
+                            st.error(b2.get("msg", i18n.t("error_occurred")))
     else:
         st.error(body.get("msg", i18n.t("error_occurred")))
 
-    if user["role"] == "admin":
-        st.divider()
-        st.subheader(i18n.t("user.manage"))
-        status, body = api_client.request("GET", "/api/users/")
-        if status == 200:
-            data = body["data"]
-            st.write(i18n.t("user.total", n=data["total"]))
-            roles = ["admin", "user", "banned"]
-            for u in data["users"]:
-                with st.expander(f"{u['username']}（{u['role']}）"):
-                    st.write(f"user_id：{u['user_id']}")
-                    st.write(f"{i18n.t('user.join_time')}：{u['join_time']}")
-                    st.write(
-                        f"{i18n.t('user.submits', n=u['submit_count'])}　"
-                        f"{i18n.t('user.resolved', n=u['resolve_count'])}"
-                    )
-                    c1, c2 = st.columns([2, 1])
-                    with c1:
-                        new_role = st.selectbox(
-                            i18n.t("user.role"), roles,
-                            index=roles.index(u["role"]), key=f"role_{u['user_id']}",
-                        )
-                    with c2:
-                        if st.button(i18n.t("user.update_role"), key=f"btn_{u['user_id']}"):
-                            s2, b2 = api_client.request(
-                                "PUT", f"/api/users/{u['user_id']}/role", json_body={"role": new_role}
-                            )
-                            if s2 == 200:
-                                st.success(i18n.t("user.role_updated"))
-                                st.rerun()
-                            else:
-                                st.error(b2.get("msg", i18n.t("error_occurred")))
-        else:
-            st.error(body.get("msg", i18n.t("error_occurred")))
-
-        st.divider()
-        st.subheader(i18n.t("user.create_admin"))
-        with st.form("create_admin"):
+    st.divider()
+    theme.section(i18n.t("user.create_admin"))
+    with st.form("create_admin"):
+        c1, c2 = st.columns(2)
+        with c1:
             username = st.text_input(i18n.t("username"))
+        with c2:
             password = st.text_input(i18n.t("password"), type="password")
-            if st.form_submit_button(i18n.t("user.create_btn")):
-                s2, b2 = api_client.request(
-                    "POST", "/api/users/admin", json_body={"username": username, "password": password}
-                )
-                st.success(i18n.t("user.create_ok")) if s2 == 200 else st.error(
-                    b2.get("msg", i18n.t("error_occurred"))
-                )
+        if st.form_submit_button(i18n.t("user.create_btn"), type="primary"):
+            s2, b2 = api_client.request(
+                "POST", "/api/users/admin", json_body={"username": username, "password": password}
+            )
+            st.success(i18n.t("user.create_ok")) if s2 == 200 else st.error(
+                b2.get("msg", i18n.t("error_occurred"))
+            )
 
-        st.divider()
-        st.subheader(i18n.t("user.system_reset"))
-        st.caption(i18n.t("user.reset_hint"))
-        if st.button(
-            st.session_state.get("confirm_reset")
-            and i18n.t("user.reset_confirm_btn") or i18n.t("user.reset_btn")
-        ):
-            if not st.session_state.get("confirm_reset"):
-                st.session_state["confirm_reset"] = True
+    st.divider()
+    theme.section(i18n.t("user.system_reset"))
+    st.caption(i18n.t("user.reset_hint"))
+    if st.button(
+        st.session_state.get("confirm_reset")
+        and i18n.t("user.reset_confirm_btn") or i18n.t("user.reset_btn")
+    ):
+        if not st.session_state.get("confirm_reset"):
+            st.session_state["confirm_reset"] = True
+            st.rerun()
+        else:
+            s, b = api_client.request("POST", "/api/reset/")
+            if s == 200:
+                api_client.logout()
+                st.session_state.pop("confirm_reset", None)
+                st.session_state["global_msg"] = i18n.t("user.reset_done")
                 st.rerun()
             else:
-                s, b = api_client.request("POST", "/api/reset/")
-                if s == 200:
-                    api_client.logout()
-                    st.session_state.pop("confirm_reset", None)
-                    st.session_state["global_msg"] = i18n.t("user.reset_done")
-                    st.rerun()
-                else:
-                    st.error(b.get("msg", i18n.t("error_occurred")))
-                    st.session_state.pop("confirm_reset", None)
+                st.error(b.get("msg", i18n.t("error_occurred")))
+                st.session_state.pop("confirm_reset", None)
 
 
 # ================= 题目（浏览 + 管理） =================
@@ -320,7 +327,23 @@ def render_solve():
     left, right = st.columns([5, 4], gap="large")
 
     with left:
-        st.subheader(f"{detail.get('id', problem_id)} · {detail.get('title', '')}")
+        st.markdown(
+            f"<div class='sec-title'>{detail.get('id', problem_id)} · {detail.get('title', '')}</div>",
+            unsafe_allow_html=True,
+        )
+        # 难度 + 标签 + 限制 chips
+        meta = []
+        if detail.get("difficulty"):
+            meta.append(f"<span class='chip'>🌡 {detail['difficulty']}</span>")
+        if detail.get("source"):
+            meta.append(f"<span class='chip'>📚 {detail['source']}</span>")
+        if detail.get("tags"):
+            meta.append("".join(f"<span class='chip'>#{t}</span>" for t in detail["tags"]))
+        if meta:
+            st.markdown(
+                f"<div style='margin:-.2rem 0 .5rem 0'>{''.join(meta)}</div>",
+                unsafe_allow_html=True,
+            )
         st.markdown(f"**{i18n.t('problem.desc')}**")
         st.markdown(detail.get("description", "（—）"))
         st.markdown(f"**{i18n.t('problem.input_desc')}**")
@@ -338,8 +361,6 @@ def render_solve():
             st.markdown(f"**{i18n.t('problem.constraints')}**：{detail['constraints']}")
         st.caption(i18n.t("problem.limit", t=detail.get("time_limit", 3),
                           m=detail.get("memory_limit", 128)))
-        if detail.get("tags"):
-            st.caption(f"{i18n.t('problem.tags')}：{'、'.join(detail['tags'])}")
 
     with right:
         st.subheader(i18n.t("solve.submit_code"))
@@ -381,7 +402,7 @@ def render_solve():
 
     # ---- 我的提交记录 ----
     st.divider()
-    st.subheader(i18n.t("solve.my_records"))
+    theme.section(i18n.t("solve.my_records"))
     status, body = api_client.request("GET", "/api/submissions/",
                                       params={"user_id": user["user_id"]})
     if status != 200:
