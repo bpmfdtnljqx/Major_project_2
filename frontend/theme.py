@@ -135,6 +135,15 @@ div[data-testid="stRadio"] [aria-checked="true"] {
 }
 
 /* ============ 输入类 ============ */
+/* 控件标签统一（selectbox/radio 上方的文字） */
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] span,
+[data-testid="baseWidgetLabel"] p {
+    color: var(--dim) !important;
+    font-weight: 600 !important;
+    font-size: .88rem !important;
+    letter-spacing: .01em;
+}
 [data-baseweb="select"] > div, .stTextInput input, .stNumberInput input, .stTextArea textarea {
     background: var(--raised) !important; border: 1px solid var(--line) !important;
     border-radius: 10px !important; color: var(--text) !important;
