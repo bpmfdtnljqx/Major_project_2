@@ -92,6 +92,7 @@ with st.form("add_problem"):
         memory_limit = st.number_input("内存限制(MB)", min_value=1, value=128)
         author = st.text_input("作者")
         difficulty = st.text_input("难度")
+        public_cases = st.checkbox("公开测试点评测日志（所有人都能看该题提交的测试点明细）")
     if st.form_submit_button("新增"):
         try:
             samples_json = json.loads(samples)
@@ -107,6 +108,7 @@ with st.form("add_problem"):
                 "tags": [t.strip() for t in tags.split(",") if t.strip()],
                 "time_limit": time_limit, "memory_limit": int(memory_limit),
                 "author": author, "difficulty": difficulty,
+                "public_cases": public_cases,
             }
             s3, b3 = api_client.request("POST", "/api/problems/", json_body=payload)
             if s3 == 200:
@@ -133,6 +135,10 @@ if problems:
             testcases = st.text_area("测试点（JSON）", value=json.dumps(d["testcases"], ensure_ascii=False))
             time_limit = st.number_input("时间限制(s)", value=float(d["time_limit"]), step=0.5)
             memory_limit = st.number_input("内存限制(MB)", value=int(d["memory_limit"]))
+            public_cases = st.checkbox(
+                "公开测试点评测日志（所有人都能看该题提交的测试点明细）",
+                value=bool(d.get("public_cases", False)),
+            )
             if st.form_submit_button("保存修改"):
                 try:
                     samples_json = json.loads(samples)
@@ -149,6 +155,7 @@ if problems:
                         "tags": d.get("tags", []), "time_limit": time_limit,
                         "memory_limit": int(memory_limit),
                         "author": d.get("author", ""), "difficulty": d.get("difficulty", ""),
+                        "public_cases": public_cases,
                     }
                     s3, b3 = api_client.request("PUT", f"/api/problems/{edit_id}", json_body=payload)
                     if s3 == 200:
