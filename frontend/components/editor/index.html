@@ -32,7 +32,6 @@
     var editor = document.getElementById("editor");
     var INDENT = "    ";
     var firstRender = true;
-    var debounceTimer = null;
 
     function send() {
       if (window.Streamlit && window.Streamlit.setComponentValue) {
@@ -40,22 +39,20 @@
       }
     }
 
-    // 输入：防抖回传（避免每次击键触发整页 rerun 造成闪烁）
-    function scheduleSend() {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(send, 350);
-    }
+    // 仅在失焦 / 提交等需要取值时回传，避免每次击键触发整页 rerun（否则会闪烁）。
+    // 键入内容始终保留在 textarea 中；用户点击"提交评测"等外部控件时 blur 会先触发回传，
+    // 故 Python 侧在提交时总能拿到最新代码。
+    editor.addEventListener("input", function () { /* 不回传，避免 rerun 闪烁 */ });
+
+    // 失焦：立即回传，保证提交/切页前值已同步
+    editor.addEventListener("blur", send);
+
+    // Tab 缩进后手动回传一次（Tab 是显式动作，不依赖 blur）
+    function afterTab() { send(); }
 
     function insertAt(start, end, text) {
       editor.value = editor.value.slice(0, start) + text + editor.value.slice(end);
       return start + text.length;
-    }
-
-    // 在光标处插入文本，保留选区
-    function applyEdit(start, end, newValue) {
-      editor.value = newValue;
-      editor.selectionStart = start;
-      editor.selectionEnd = end;
     }
 
     editor.addEventListener("keydown", function (e) {
@@ -89,15 +86,7 @@
         editor.selectionStart = Math.max(start - removedStart, ls);
         editor.selectionEnd = editor.selectionStart + (out.length - (end - ls - removedStart));
       }
-      scheduleSend();
-    });
-
-    // 普通输入：防抖回传
-    editor.addEventListener("input", scheduleSend);
-    // 失焦：立即回传，保证提交/切页前值已同步
-    editor.addEventListener("blur", function () {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      send();
+      afterTab();
     });
 
     function onRender(event) {
@@ -106,7 +95,6 @@
         editor.style.height = props.height + "px";
       }
       // 仅在"编辑器未被聚焦"时应用外部传入的 code（避免与用户输入竞争造成闪烁/丢字）。
-      // 首次渲染一定应用；之后若用户在输入中，绝不覆盖。
       if (typeof props.code === "string") {
         var isTyping = document.activeElement === editor;
         if (firstRender) {
