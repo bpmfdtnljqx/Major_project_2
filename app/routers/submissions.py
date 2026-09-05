@@ -37,6 +37,11 @@ def _stores(request: Request):
 async def create_submission(request: Request, body: SubmissionCreate, current: dict = Depends(get_current_user)):
     problem_store, language_store, submission_store = _stores(request)
 
+    # 频率限制（按用户，异常优先级 429 高于 404）
+    user_id = current["user_id"]
+    if not request.app.state.rate_limiter.check(user_id):
+        raise AppError(429, "too many submissions")
+
     # 校验题目与语言存在
     problem = problem_store.get(body.problem_id)
     if problem is None:
@@ -44,11 +49,6 @@ async def create_submission(request: Request, body: SubmissionCreate, current: d
     language = language_store.get(body.language)
     if language is None:
         raise AppError(404, "language not found")
-
-    # 频率限制（按用户）
-    user_id = current["user_id"]
-    if not request.app.state.rate_limiter.check(user_id):
-        raise AppError(429, "too many submissions")
 
     # 写入 pending 记录
     submission_id = uuid.uuid4().hex
