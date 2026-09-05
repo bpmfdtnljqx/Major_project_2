@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { margin: 0; font-family: -apple-system, "Segoe UI", sans-serif; }
+    #editor {
+      width: 100%;
+      box-sizing: border-box;
+      resize: vertical;
+      padding: 10px 12px;
+      font-family: "Consolas", "Menlo", "DejaVu Sans Mono", monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      border: 1px solid rgba(128, 128, 128, 0.35);
+      border-radius: 6px;
+      background: #0e1117;      /* Streamlit 深色代码区 */
+      color: #e6edf3;
+      tab-size: 4;
+      outline: none;
+    }
+    #editor:focus { border-color: #4b8bef; }
+    #editor::placeholder { color: #6b6f76; }
+    .hint { font-size: 11px; color: #7a7d85; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <textarea id="editor" spellcheck="false" placeholder="在此输入代码，Tab 键可缩进……"></textarea>
+  <div class="hint">Tip: Tab 缩进 / Shift+Tab 反缩进 / 可拖动右下角调节高度</div>
+
+  <script>
+    var editor = document.getElementById("editor");
+    var INDENT = "    ";
+
+    function emit() {
+      if (window.Streamlit && window.Streamlit.setComponentValue) {
+        window.Streamlit.setComponentValue(editor.value);
+      }
+    }
+
+    // 在光标处插入文本，返回光标结束位置
+    function insertAt(start, end, text) {
+      editor.value = editor.value.slice(0, start) + text + editor.value.slice(end);
+      return start + text.length;
+    }
+
+    editor.addEventListener("keydown", function (e) {
+      if (e.key !== "Tab") return;
+      e.preventDefault();
+      var start = editor.selectionStart, end = editor.selectionEnd;
+
+      if (!e.shiftKey) {
+        // 缩进
+        if (start === end) {
+          editor.selectionStart = editor.selectionEnd = insertAt(start, end, INDENT);
+        } else {
+          var lineStart = editor.value.lastIndexOf("\n", start - 1) + 1;
+          var sel = editor.value.slice(lineStart, end);
+          var added = sel.replace(/^/gm, INDENT);
+          editor.value = editor.value.slice(0, lineStart) + added + editor.value.slice(end);
+          editor.selectionStart = start + INDENT.length;
+          editor.selectionEnd = end + (added.length - sel.length);
+        }
+      } else {
+        // 反缩进：每行去掉开头最多 4 个空格
+        var ls = editor.value.lastIndexOf("\n", start - 1) + 1;
+        var blk = editor.value.slice(ls, end);
+        var out = blk.replace(/^( {1,4})/gm, "");
+        var removedStart = 0;
+        // 计算选区起点所在行被去掉的空格数，用于校正光标
+        var cursorLine = editor.value.slice(ls, start);
+        var lead = cursorLine.match(/^( {1,4})/);
+        if (lead) removedStart = lead[1].length;
+        editor.value = editor.value.slice(0, ls) + out + editor.value.slice(end);
+        editor.selectionStart = Math.max(start - removedStart, ls);
+        editor.selectionEnd = editor.selectionStart + (out.length - (end - ls - removedStart));
+      }
+      emit();
+    });
+
+    editor.addEventListener("input", emit);
+
+    function onRender(event) {
+      var props = event.detail.args || {};
+      if (typeof props.code === "string" && props.code !== editor.value) {
+        editor.value = props.code;
+      }
+      if (props.height) editor.style.height = props.height + "px";
+    }
+    if (window.Streamlit) {
+      window.Streamlit.events.addEventListener(window.Streamlit.RENDER_EVENT, onRender);
+      window.Streamlit.setComponentReady();
+    }
+  </script>
+</body>
+</html>
