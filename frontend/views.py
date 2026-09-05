@@ -461,7 +461,7 @@ def render_ai():
                          if cfg.get("key_configured") else i18n.t("ai.key_missing"))
             mode_txt = i18n.t("ai.mock_warn") if cfg.get("use_mock") else i18n.t("ai.real_enabled")
             st.caption(i18n.t("ai.cur_config", url=cfg["provider_url"], model=cfg["model"],
-                              src=src_label, key=key_state, mode=mode_txt))
+                              src=src_label, key_state=key_state, mode=mode_txt))
             with st.form("ai_config"):
                 provider_url = st.text_input(i18n.t("ai.provider_url"), value=cfg.get("provider_url", ""))
                 model = st.text_input(i18n.t("ai.model"), value=cfg.get("model", ""))

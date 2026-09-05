@@ -6,7 +6,7 @@
     i18n.t("problem.limit", t=3, m=128)   # 支持 {t} 占位符
 
 语言存于 st.session_state["lang"]（"zh"/"en"），默认中文。
-切换语言后在页面顶部调用 i18n.render_lang_selector()（放侧边栏）。
+切换语言用 i18n.render_lang_bar()（放页面顶部/导航栏右侧）。
 """
 
 import streamlit as st
@@ -151,8 +151,8 @@ _STRINGS = {
     "ai.title": {"zh": "AI 智能命题", "en": "AI Problem Generation"},
     "ai.model_config": {"zh": "模型配置（可导入 / 更换 API Key）", "en": "Model Config (import / change API key)"},
     "ai.cur_config": {
-        "zh": "当前生效：{url} · 模型 {model} ｜ 密钥来源：{src}（{key}）｜ {mode}",
-        "en": "Current: {url} · model {model} ｜ key source: {src} ({key}) ｜ {mode}",
+        "zh": "当前生效：{url} · 模型 {model} ｜ 密钥来源：{src}（{key_state}）｜ {mode}",
+        "en": "Current: {url} · model {model} ｜ key source: {src} ({key_state}) ｜ {mode}",
     },
     "ai.src_db": {"zh": "已保存（数据库）", "en": "Saved (database)"},
     "ai.src_env": {"zh": "环境变量 .env", "en": "Environment .env"},
@@ -221,8 +221,23 @@ def t(key: str, **kw) -> str:
     return text
 
 
+def render_lang_bar() -> None:
+    """渲染一个紧凑语言切换（中文 / EN）。点击即切换并重跑。"""
+    cur = get_lang()
+    opts = list(LANG_LABELS.keys())
+    short = {"zh": "中文", "en": "EN"}
+    sel = st.radio(
+        "language", opts, horizontal=True,
+        format_func=lambda k: short.get(k, k),
+        index=opts.index(cur), key="lang_top", label_visibility="collapsed",
+    )
+    if sel != cur:
+        set_lang(sel)
+        st.rerun()
+
+
 def render_lang_selector() -> None:
-    """在侧边栏渲染语言切换控件。放在每页开头调用一次。"""
+    """（废弃：改用顶部 render_lang_bar）在侧边栏渲染语言切换。"""
     cur = get_lang()
     label = {"zh": "🌐 语言 / Language", "en": "🌐 Language / 语言"}[cur]
     chosen = st.sidebar.selectbox(
