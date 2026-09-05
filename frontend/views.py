@@ -26,6 +26,12 @@ def _require_login() -> bool:
     return True
 
 
+def _go_solve(problem_id: str) -> None:
+    """按钮 on_click 回调：记录待做题并切到做题导航（回调在下个 run 前执行，安全）。"""
+    st.session_state["pending_problem"] = problem_id
+    st.session_state["main_nav"] = "solve"
+
+
 # ================= 用户 / 我的 =================
 def render_profile():
     if not _require_login():
@@ -174,10 +180,12 @@ def render_problems():
 
                 c1, c2, c3 = st.columns([2, 1, 1])
                 with c1:
-                    if st.button(i18n.t("problem.solve_btn"), key=f"go_{d['id']}", type="primary"):
-                        st.session_state["pending_problem"] = d["id"]
-                        st.session_state["main_nav"] = "solve"
-                        st.rerun()
+                    # 用 on_click 回调跳转到"做题"，避免在 radio(main_nav) 实例化后改其 state
+                    if st.button(
+                        i18n.t("problem.solve_btn"), key=f"go_{d['id']}", type="primary",
+                        on_click=_go_solve, args=(d["id"],),
+                    ):
+                        pass
                 if user["role"] == "admin":
                     with c2:
                         if st.button(i18n.t("problem.delete_btn"), key=f"del_{d['id']}"):
