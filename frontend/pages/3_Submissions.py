@@ -84,7 +84,9 @@ with right:
         language = st.selectbox(i18n.t("solve.language"), languages, key="sub_lang")
         # 语言 → Ace 高亮模式
         ace_mode = {"python": "python", "cpp": "c_cpp"}.get(language, "plain_text")
-        # 代码编辑器（Ace，支持 Tab 缩进与语法高亮；auto_update=False 避免逐键闪烁）
+        # 代码编辑器（Ace，支持 Tab 缩进与语法高亮）
+        # auto_update=True：输入停止后自动同步，不显示 st_ace 自带的 "Apply" 按钮，
+        # 页面上只有一个"提交评测"按钮；st_ace 内部 200ms 防抖，不会逐键刷新。
         code = st_ace(
             value=st.session_state.get(f"draft_{problem_id}", ""),
             language=ace_mode,
@@ -93,7 +95,7 @@ with right:
             font_size=14,
             tab_size=4,
             min_lines=12,
-            auto_update=False,
+            auto_update=True,
             key=f"ace_{problem_id}",
         )
 
