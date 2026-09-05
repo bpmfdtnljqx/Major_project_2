@@ -44,6 +44,8 @@ def _compile(lang: Language, src: Path, exe: Path, work_dir: Path) -> tuple[bool
         return False, "compile timeout"
     if proc.returncode != 0:
         msg = (proc.stderr or proc.stdout).decode(errors="replace")
+        # 去掉绝对路径，只保留文件名（避免泄露本地沙箱目录，也更整洁）
+        msg = msg.replace(str(src), src.name).replace(str(exe), exe.name)
         return False, msg.strip()
     return True, ""
 
