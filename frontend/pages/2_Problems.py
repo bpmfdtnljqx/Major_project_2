@@ -5,20 +5,23 @@ import json
 import streamlit as st
 
 import api_client
+import i18n
 
-st.set_page_config(page_title="题目")
+st.set_page_config(page_title=i18n.t("problem.title"))
 
-st.title("题目")
+i18n.render_lang_selector()
+
+st.title(i18n.t("problem.title"))
 
 if not api_client.is_logged_in():
-    st.warning("请先登录")
+    st.warning(i18n.t("login_required"))
     st.stop()
 
 user = api_client.current_user()
 
 status, body = api_client.request("GET", "/api/problems/")
 if status != 200:
-    st.error(body.get("msg", "获取题目列表失败"))
+    st.error(body.get("msg", i18n.t("error_occurred")))
     st.stop()
 problems = body["data"]
 
@@ -31,74 +34,77 @@ def _title_of(pid: str) -> str:
 
 
 # ---- 列表 + 详情 ----
-st.subheader("题目列表")
+st.subheader(i18n.t("problem.list"))
 if problems:
     problem_ids = [p["id"] for p in problems]
-    selected = st.selectbox("选择题目", problem_ids, format_func=_title_of)
+    selected = st.selectbox(i18n.t("problem.select"), problem_ids, format_func=_title_of)
     s2, b2 = api_client.request("GET", f"/api/problems/{selected}")
     if s2 == 200:
         d = b2["data"]
         with st.expander(f"{d['id']} - {d['title']}", expanded=True):
-            st.markdown(f"**描述**：{d['description']}")
-            st.markdown(f"**输入格式**：{d['input_description']}")
-            st.markdown(f"**输出格式**：{d['output_description']}")
-            st.markdown("**样例**：")
+            st.markdown(f"**{i18n.t('problem.desc')}**：{d['description']}")
+            st.markdown(f"**{i18n.t('problem.input_desc')}**：{d['input_description']}")
+            st.markdown(f"**{i18n.t('problem.output_desc')}**：{d['output_description']}")
+            st.markdown(f"**{i18n.t('problem.samples')}**：")
             for smp in d["samples"]:
-                st.code(f"输入：{smp['input']}\n输出：{smp['output']}")
-            st.markdown(f"**限制**：{d['constraints']}")
-            st.markdown(f"**时间 / 内存限制**：{d['time_limit']}s / {d['memory_limit']}MB")
-            if d["tags"]:
-                st.markdown(f"**标签**：{', '.join(d['tags'])}")
+                st.code(
+                    f"{i18n.t('solve.input_label')}：{smp['input']}\n"
+                    f"{i18n.t('solve.output_label')}：{smp['output']}"
+                )
+            st.markdown(f"**{i18n.t('problem.constraints')}**：{d['constraints']}")
+            st.caption(i18n.t("problem.limit", t=d["time_limit"], m=d["memory_limit"]))
+            if d.get("tags"):
+                st.markdown(f"**{i18n.t('problem.tags')}**：{', '.join(d['tags'])}")
             if d.get("public_cases"):
-                st.caption("🔓 该题测试点日志对所有人公开")
+                st.caption(i18n.t("problem.public_log"))
             # 去做题（跳到评测页并自动选中此题）
-            if st.button("去做题 / 提交", key=f"go_{d['id']}", type="primary"):
+            if st.button(i18n.t("problem.solve_btn"), key=f"go_{d['id']}", type="primary"):
                 st.session_state["pending_problem"] = d["id"]
                 st.switch_page("pages/3_Submissions.py")
             if user["role"] == "admin":
-                if st.button("删除此题", key=f"del_{d['id']}"):
+                if st.button(i18n.t("problem.delete_btn"), key=f"del_{d['id']}"):
                     s3, b3 = api_client.request("DELETE", f"/api/problems/{d['id']}")
                     if s3 == 200:
-                        st.success("已删除")
+                        st.success(i18n.t("problem.deleted"))
                         st.rerun()
                     else:
-                        st.error(b3.get("msg", "删除失败"))
+                        st.error(b3.get("msg", i18n.t("error_occurred")))
 else:
-    st.info("暂无题目")
+    st.info(i18n.t("problem.none"))
 
 # ---- 题目管理（新增/编辑，仅管理员可见；后端保持文档合规） ----
 if user["role"] != "admin":
     st.divider()
-    st.caption("仅教师 / 助教可新增或编辑题目；如需要请联系管理员。")
+    st.caption(i18n.t("user.only_admin_manage"))
     st.stop()
 
 # ---- 新增题目 ----
 st.divider()
-st.subheader("新增题目")
+st.subheader(i18n.t("problem.add"))
 with st.form("add_problem"):
-    pid = st.text_input("题目 id（必填）")
-    title = st.text_input("标题（必填）")
-    description = st.text_area("描述（必填）")
-    input_desc = st.text_area("输入格式说明（必填）")
-    output_desc = st.text_area("输出格式说明（必填）")
-    constraints = st.text_input("数据范围与限制（必填）")
-    samples = st.text_area("样例（JSON 数组）", value='[{"input": "1 2", "output": "3"}]')
-    testcases = st.text_area("测试点（JSON 数组）", value='[{"input": "1 2", "output": "3"}]')
-    with st.expander("可选字段"):
-        hint = st.text_input("提示")
-        source = st.text_input("来源")
-        tags = st.text_input("标签（逗号分隔）")
-        time_limit = st.number_input("时间限制(s)", min_value=0.1, value=3.0, step=0.5)
-        memory_limit = st.number_input("内存限制(MB)", min_value=1, value=128)
-        author = st.text_input("作者")
-        difficulty = st.text_input("难度")
-        public_cases = st.checkbox("公开测试点评测日志（所有人都能看该题提交的测试点明细）")
-    if st.form_submit_button("新增"):
+    pid = st.text_input(i18n.t("problem.id"))
+    title = st.text_input(i18n.t("problem.title_req"))
+    description = st.text_area(i18n.t("problem.desc"))
+    input_desc = st.text_area(i18n.t("problem.input_desc"))
+    output_desc = st.text_area(i18n.t("problem.output_desc"))
+    constraints = st.text_input(i18n.t("problem.constraints"))
+    samples = st.text_area(i18n.t("problem.samples") + " (JSON)", value='[{"input": "1 2", "output": "3"}]')
+    testcases = st.text_area("Testcases (JSON)", value='[{"input": "1 2", "output": "3"}]')
+    with st.expander(i18n.t("problem.optional")):
+        hint = st.text_input(i18n.t("problem.hint"))
+        source = st.text_input(i18n.t("problem.source"))
+        tags = st.text_input(i18n.t("problem.tags_input"))
+        time_limit = st.number_input(i18n.t("problem.time_limit"), min_value=0.1, value=3.0, step=0.5)
+        memory_limit = st.number_input(i18n.t("problem.memory_limit"), min_value=1, value=128)
+        author = st.text_input(i18n.t("problem.author"))
+        difficulty = st.text_input(i18n.t("problem.difficulty"))
+        public_cases = st.checkbox(i18n.t("problem.public_log_toggle"))
+    if st.form_submit_button(i18n.t("problem.add_btn")):
         try:
             samples_json = json.loads(samples)
             testcases_json = json.loads(testcases)
         except json.JSONDecodeError:
-            st.error("样例 / 测试点的 JSON 格式错误")
+            st.error("JSON format error")
         else:
             payload = {
                 "id": pid, "title": title, "description": description,
@@ -112,39 +118,38 @@ with st.form("add_problem"):
             }
             s3, b3 = api_client.request("POST", "/api/problems/", json_body=payload)
             if s3 == 200:
-                st.success("新增成功")
+                st.success(i18n.t("problem.add_ok"))
                 st.rerun()
             else:
-                st.error(b3.get("msg", "新增失败"))
+                st.error(b3.get("msg", i18n.t("error_occurred")))
 
 # ---- 编辑题目 ----
 st.divider()
-st.subheader("编辑题目")
+st.subheader(i18n.t("problem.edit"))
 if problems:
-    edit_id = st.selectbox("选择要编辑的题目", problem_ids, key="edit_select")
+    edit_id = st.selectbox(i18n.t("problem.edit_select"), problem_ids, key="edit_select")
     s2, b2 = api_client.request("GET", f"/api/problems/{edit_id}")
     if s2 == 200:
         d = b2["data"]
         with st.form(f"edit_{edit_id}"):
-            title = st.text_input("标题", value=d["title"])
-            description = st.text_area("描述", value=d["description"])
-            input_desc = st.text_area("输入格式说明", value=d["input_description"])
-            output_desc = st.text_area("输出格式说明", value=d["output_description"])
-            constraints = st.text_input("数据范围与限制", value=d["constraints"])
-            samples = st.text_area("样例（JSON）", value=json.dumps(d["samples"], ensure_ascii=False))
-            testcases = st.text_area("测试点（JSON）", value=json.dumps(d["testcases"], ensure_ascii=False))
-            time_limit = st.number_input("时间限制(s)", value=float(d["time_limit"]), step=0.5)
-            memory_limit = st.number_input("内存限制(MB)", value=int(d["memory_limit"]))
+            title = st.text_input(i18n.t("problem.title_req"), value=d["title"])
+            description = st.text_area(i18n.t("problem.desc"), value=d["description"])
+            input_desc = st.text_area(i18n.t("problem.input_desc"), value=d["input_description"])
+            output_desc = st.text_area(i18n.t("problem.output_desc"), value=d["output_description"])
+            constraints = st.text_input(i18n.t("problem.constraints"), value=d["constraints"])
+            samples = st.text_area(i18n.t("problem.samples") + " (JSON)", value=json.dumps(d["samples"], ensure_ascii=False))
+            testcases = st.text_area("Testcases (JSON)", value=json.dumps(d["testcases"], ensure_ascii=False))
+            time_limit = st.number_input(i18n.t("problem.time_limit"), value=float(d["time_limit"]), step=0.5)
+            memory_limit = st.number_input(i18n.t("problem.memory_limit"), value=int(d["memory_limit"]))
             public_cases = st.checkbox(
-                "公开测试点评测日志（所有人都能看该题提交的测试点明细）",
-                value=bool(d.get("public_cases", False)),
+                i18n.t("problem.public_log_toggle"), value=bool(d.get("public_cases", False))
             )
-            if st.form_submit_button("保存修改"):
+            if st.form_submit_button(i18n.t("problem.save_btn")):
                 try:
                     samples_json = json.loads(samples)
                     testcases_json = json.loads(testcases)
                 except json.JSONDecodeError:
-                    st.error("样例 / 测试点的 JSON 格式错误")
+                    st.error("JSON format error")
                 else:
                     payload = {
                         "id": edit_id, "title": title, "description": description,
@@ -159,9 +164,9 @@ if problems:
                     }
                     s3, b3 = api_client.request("PUT", f"/api/problems/{edit_id}", json_body=payload)
                     if s3 == 200:
-                        st.success("已保存")
+                        st.success(i18n.t("problem.saved"))
                         st.rerun()
                     else:
-                        st.error(b3.get("msg", "保存失败"))
+                        st.error(b3.get("msg", i18n.t("error_occurred")))
 else:
-    st.info("暂无题目可编辑")
+    st.info(i18n.t("problem.none_edit"))
