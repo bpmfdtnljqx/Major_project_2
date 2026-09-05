@@ -11,6 +11,7 @@ from streamlit_ace import st_ace
 
 import api_client
 import i18n
+import theme
 
 
 def _require_login() -> bool:
@@ -347,9 +348,11 @@ def render_solve():
         else:
             language = st.selectbox(i18n.t("solve.language"), languages, key="sub_lang")
             ace_mode = {"python": "python", "cpp": "c_cpp"}.get(language, "plain_text")
+            # 代码编辑器跟随亮/暗主题（避免亮色页面里嵌一大块深色编辑器过于突兀）
+            ace_theme = "chrome" if theme.current_mode() == "light" else "monokai"
             code = st_ace(
                 value=st.session_state.get(f"draft_{problem_id}", ""),
-                language=ace_mode, theme="monokai", keybinding="vscode",
+                language=ace_mode, theme=ace_theme, keybinding="vscode",
                 font_size=14, tab_size=4, min_lines=12, auto_update=True,
                 key=f"ace_{problem_id}",
             )

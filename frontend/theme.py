@@ -26,12 +26,12 @@ DARK = {
 
 # ---- 亮色 palette ----
 LIGHT = {
-    "bg0": "#f6f4ef", "bg1": "#ffffff",
-    "card": "#ffffff", "raised": "#f1eee8",
-    "line": "#e4dfd6", "line_hi": "#cfc8bb",
-    "text": "#23201c", "dim": "#6b655b", "faint": "#9b9487",
-    "accent": "#a86f2c", "accent_dim": "#8a5a22",
-    "ok": "#2f8f5b", "err": "#c14436", "info": "#38639e",
+    "bg0": "#f5f2ec", "bg1": "#ffffff",
+    "card": "#ffffff", "raised": "#efeae2",
+    "line": "#e2dcd1", "line_hi": "#cdc4b4",
+    "text": "#27221b", "dim": "#5a5346", "faint": "#8a8172",
+    "accent": "#b5712c", "accent_dim": "#8f5a22",
+    "ok": "#2f8a57", "err": "#bd4335", "info": "#3c639b",
 }
 
 
@@ -87,6 +87,13 @@ h1 { font-weight: 760; letter-spacing: -.02em; font-size: 1.8rem; color: var(--t
 h2 { font-weight: 720; letter-spacing: -.01em; color: var(--text); }
 h3 { font-weight: 660; color: var(--text); }
 h1,h2,h3 { margin-bottom: .3rem; }
+
+/* 小字（caption/提示）显式跟随主题色，亮色下也清晰 */
+.stCaption, [data-testid="stCaptionContainer"] p,
+.small, [class*="caption"], .stMarkdown small {
+    color: var(--dim) !important;
+}
+.stCaption { opacity: 1 !important; }
 
 /* ============ 卡片容器 ============ */
 .stExpander {
@@ -178,7 +185,7 @@ hr { border-color: var(--line) !important; }
 
 /* 代码块 */
 .stCodeBlock { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.stCodeBlock pre { background: color-mix(in srgb, var(--raised) 92%, #000 8%) !important; }
+.stCodeBlock pre { background: var(--raised) !important; }
 
 /* 链接 */
 a { color: var(--info); text-decoration: none; }
