@@ -72,15 +72,40 @@ def inject() -> None:
     font-weight: 600; font-size: .9rem !important;
 }}
 
-/* ============ 输入控件 ============ */
-.stTextInput input, .stTextArea textarea, .stNumberInput input,
-[data-baseweb="select"] > div {{
+/* ============ 输入控件（强化：覆盖 baseweb 多层） ============ */
+.stTextInput input, .stTextArea textarea, .stNumberInput input {{
     background: {pal['input_bg']} !important;
     border: 1px solid {pal['line_hi']} !important;
     border-radius: 10px !important;
     color: {pal['text']} !important;
     -webkit-text-fill-color: {pal['text']} !important;
+    box-shadow: none !important;
 }}
+/* Streamlit 在 input 外层加 data-baseweb="input"，里面有个 div 套 input */
+[data-baseweb="input"], [data-baseweb="base-input"] {{
+    background: {pal['input_bg']} !important;
+    border-color: {pal['line_hi']} !important;
+    border-radius: 10px !important;
+}}
+[data-baseweb="select"] > div,
+[data-baseweb="select"] > div > div {{
+    background: {pal['input_bg']} !important;
+    border: 1px solid {pal['line_hi']} !important;
+    border-radius: 10px !important;
+    color: {pal['text']} !important;
+    box-shadow: none !important;
+}}
+[data-baseweb="select"]:focus-within > div,
+[data-baseweb="select"]:hover > div,
+.stTextInput:focus-within > div,
+.stTextInput:hover,
+.stTextArea:focus-within > div,
+.stNumberInput:focus-within > div {{
+    border-color: {pal['accent']} !important;
+    box-shadow: 0 0 0 2px {pal['accent']}33 !important;
+}}
+/* 去掉 baseweb 内部多余深色描边 */
+[data-baseweb="select"] * {{ box-shadow: none !important; }}
 .stTextInput input::placeholder, .stTextArea textarea::placeholder {{
     color: {pal['faint']} !important;
     -webkit-text-fill-color: {pal['faint']} !important;
@@ -117,21 +142,29 @@ def inject() -> None:
 }}
 [data-testid="stBaseButton-primary"]:hover {{ filter: brightness(1.08); }}
 
-/* ============ radio 导航 ============ */
+/* ============ radio / 顶部导航 ============ */
+/* 去掉 Streamlit 默认的未选中黑圆点；自定义胶囊 */
+div[data-testid="stRadio"] label > div:first-child,
+div[data-testid="stRadio"] [role="radio"] > div,
+div[data-testid="stRadio"] svg {{ display: none !important; }}
 div[data-testid="stRadio"] label {{
     color: {pal['dim']} !important;
-    padding: .35rem .85rem; border-radius: 999px;
-    background: transparent; transition: all .15s ease;
+    padding: .35rem .95rem; border-radius: 999px;
+    background: transparent !important;
+    transition: all .15s ease;
+    font-weight: 500;
 }}
 div[data-testid="stRadio"] label:hover {{
-    color: {pal['text']} !important; background: {pal['raised']};
+    color: {pal['text']} !important; background: {pal['raised']} !important;
 }}
 div[data-testid="stRadio"] [aria-checked="true"] {{
-    background: {pal['raised']} !important;
+    background: {pal['accent']}22 !important;
     color: {pal['accent']} !important;
-    box-shadow: inset 0 0 0 1px {pal['accent']};
+    box-shadow: inset 0 0 0 1px {pal['accent']} !important;
     font-weight: 700 !important;
 }}
+/* 顶部那一行 radio 不画背景框 */
+div[data-testid="stRadio"]:not(:has(text)) {{ background: transparent !important; }}
 
 /* ============ Tabs ============ */
 .stTabs [data-baseweb="tab-list"] {{ gap: .25rem; }}
@@ -171,11 +204,18 @@ div[data-testid="stRadio"] [aria-checked="true"] {{
     color: {pal['text']} !important;
 }}
 
-/* ============ 代码块（解决黑块） ============ */
-.stCodeBlock, code, pre {{
+/* ============ 代码块（st.code + st_ace 容器；用 data-testid 精准匹配） ============ */
+[data-testid="stCodeBlock"], .stCodeBlock,
+[data-testid="stCodeBlock"] pre, .stCodeBlock pre {{
     background: {pal['code_bg']} !important;
     color: {pal['text']} !important;
-    border: 1px solid {pal['line']};
+    border: 1px solid {pal['line']} !important;
+    border-radius: 10px !important;
+}}
+[data-testid="stCodeBlock"] code {{ color: {pal['text']} !important; }}
+/* st_ace 自定义组件容器外框：让 ace 在亮色下用细边框替换它默认深框 */
+iframe[title*="streamlit_ace"], [data-testid="stExpander"] iframe {{
+    border: 1px solid {pal['line_hi']} !important;
     border-radius: 10px;
 }}
 
@@ -210,12 +250,31 @@ div[data-testid="stRadio"] [aria-checked="true"] {{
     color: {pal['dim']} !important;
 }}
 
-/* ============ 侧边栏 ============ */
-[data-testid="stSidebar"] {{
-    background: linear-gradient(180deg, {pal['bg_grad_a']}, {pal['bg_grad_b']}) !important;
-    border-right: 1px solid {pal['line']};
+/* ============ 侧边栏（柔和，不黑块） ============ */
+section[data-testid="stSidebar"], [data-testid="stSidebar"] {{
+    background: linear-gradient(180deg, {pal['card']}, {pal['bg_grad_b']}) !important;
+    border-right: 1px solid {pal['line']} !important;
+    min-width: 0 !important;
+    width: 280px !important;
 }}
-[data-testid="stSidebar"] * {{ color: {pal['dim']}; }}
+[data-testid="stSidebar"] > div:first-child {{ background: transparent !important; }}
+[data-testid="stSidebar"] * {{ color: {pal['text']}; }}
+/* 侧边栏里 caption/小字 */
+[data-testid="stSidebar"] .stCaption,
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {{
+    color: {pal['dim']} !important;
+}}
+/* 侧边栏按钮 */
+[data-testid="stSidebar"] .stButton > button {{
+    background: {pal['raised']} !important;
+    border: 1px solid {pal['line_hi']} !important;
+    color: {pal['text']} !important;
+    border-radius: 10px !important;
+}}
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"] {{
+    background: linear-gradient(180deg, {pal['accent']}, {pal['accent_dim']}) !important;
+    color: #fff !important; border: none !important;
+}}
 
 /* ============ 滚动条 ============ */
 ::-webkit-scrollbar-thumb {{ background: {pal['line_hi']}; border-radius: 6px; }}
