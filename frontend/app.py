@@ -8,9 +8,13 @@ import streamlit as st
 
 import api_client
 import i18n
+import theme
 import views
 
 st.set_page_config(page_title=i18n.t("app.title"), layout="wide")
+
+# 注入全局高级感主题
+theme.inject()
 
 
 def _auth_screen():

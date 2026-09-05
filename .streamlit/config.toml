@@ -1,0 +1,15 @@
+[theme]
+base = "dark"
+# 深色高级感：炭蓝黑底，克制的单点强调（可调）
+primaryColor = "#e6b47a"
+backgroundColor = "#0b0f14"
+secondaryBackgroundColor = "#12181f"
+textColor = "#e6ebf2"
+# 等宽/无衬线
+font = "sans serif"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false
