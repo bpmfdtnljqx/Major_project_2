@@ -40,6 +40,14 @@ _STRINGS = {
     # ================= 登录 / 注册 =================
     "auth.tab_login": {"zh": "登录", "en": "Sign in"},
     "auth.tab_register": {"zh": "注册", "en": "Sign up"},
+    "auth.brand_sub": {
+        "zh": "简洁、异步、多语言评测的在线判题平台。",
+        "en": "A concise, async, multi-language online judge.",
+    },
+    "auth.brand_feat_1": {"zh": "多语言评测（Python / C++ 等）", "en": "Multi-language judging (Python / C++ …)"},
+    "auth.brand_feat_2": {"zh": "实时评测状态与测试点明细", "en": "Live verdicts with per-case detail"},
+    "auth.brand_feat_3": {"zh": "AI 智能命题，一键生成题目", "en": "AI-assisted problem generation"},
+    "auth.brand_feat_4": {"zh": "严格资源限制与访问审计", "en": "Strict resource limits & access audit"},
     "auth.login_btn": {"zh": "登录", "en": "Sign in"},
     "auth.login_ok": {"zh": "登录成功", "en": "Signed in"},
     "auth.login_fail": {"zh": "登录失败", "en": "Sign in failed"},
@@ -56,6 +64,9 @@ _STRINGS = {
     "user.join_time": {"zh": "注册时间", "en": "Joined"},
     "user.submits": {"zh": "提交数：{n}", "en": "Submissions: {n}"},
     "user.resolved": {"zh": "通过题数：{n}", "en": "Solved: {n}"},
+    "user.submit_count": {"zh": "提交次数", "en": "Submissions"},
+    "user.resolve_count": {"zh": "通过题数", "en": "Solved"},
+    "user.join_label": {"zh": "加入日期", "en": "Joined"},
     "user.manage": {"zh": "用户管理", "en": "User Management"},
     "user.total": {"zh": "共 {n} 个用户", "en": "{n} users"},
     "user.update_role": {"zh": "更新角色", "en": "Update role"},
@@ -226,12 +237,12 @@ def render_lang_bar() -> None:
     cur = get_lang()
     opts = list(LANG_LABELS.keys())
     short = {"zh": "中文", "en": "EN"}
-    sel = st.radio(
-        "language", opts, horizontal=True,
+    sel = st.segmented_control(
+        "language", opts,
         format_func=lambda k: short.get(k, k),
-        index=opts.index(cur), key="lang_top", label_visibility="collapsed",
+        default=cur, key="lang_top", label_visibility="collapsed",
     )
-    if sel != cur:
+    if sel is not None and sel != cur:
         set_lang(sel)
         st.rerun()
 

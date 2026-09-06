@@ -2,6 +2,7 @@
 
 主程序 app.py 依据顶栏导航选中项调用对应 render_*()。
 所有文案走 i18n；管理员门控在各自函数内处理。
+权限判断全在后端，前端仅做展示与交互封装。
 """
 
 import json
@@ -32,18 +33,67 @@ def _go_solve(problem_id: str) -> None:
     st.session_state["main_nav"] = "solve"
 
 
+def _problem_meta(d: dict) -> None:
+    """渲染题目元信息：难度徽章 + 标签 chips + 限制。"""
+    meta = []
+    if d.get("difficulty"):
+        meta.append(f'<span class="diff diff-{_diff_lvl(d["difficulty"])}">{_esc(d["difficulty"])}</span>')
+    if d.get("source"):
+        meta.append(theme.chip(f"📚 {d['source']}"))
+    for t in d.get("tags", []) or []:
+        meta.append(theme.chip(f"#{t}"))
+    if d.get("public_cases"):
+        meta.append(theme.chip("👁 public"))
+    if meta:
+        st.markdown(f'<div class="pb-meta" style="margin:.2rem 0 .6rem">{"".join(meta)}</div>',
+                    unsafe_allow_html=True)
+
+
+def _esc(s) -> str:
+    import html as _h
+    return _h.escape(str(s))
+
+
+def _diff_lvl(d) -> int:
+    low = (d or "").lower()
+    return (3 if any(x in low for x in ["困难", "hard", "高级", "advanced", "较难"]) else
+            2 if any(x in low for x in ["中等", "medium"]) else
+            1 if any(x in low for x in ["入门", "简单", "easy", "beginner"]) else 0)
+
+
+def _problem_statement(d: dict) -> None:
+    """渲染题面：描述、输入输出格式、样例（带标签代码块）、限制。题目页与做题页共用。"""
+    st.markdown(f"**{i18n.t('problem.desc')}**")
+    st.markdown(d.get("description", "") or "—")
+    st.markdown(f"**{i18n.t('problem.input_desc')}**")
+    st.markdown(d.get("input_description", "") or "—")
+    st.markdown(f"**{i18n.t('problem.output_desc')}**")
+    st.markdown(d.get("output_description", "") or "—")
+    samples = d.get("samples") or []
+    if samples:
+        st.markdown(f"**{i18n.t('problem.samples')}**")
+        for i, smp in enumerate(samples, 1):
+            theme.code_block(f"{i18n.t('solve.input_label')} #{i}", smp.get("input", ""))
+            theme.code_block(f"{i18n.t('solve.output_label')} #{i}", smp.get("output", ""))
+    if d.get("constraints"):
+        st.markdown(f"**{i18n.t('problem.constraints')}**")
+        st.markdown(d["constraints"])
+    if d.get("hint"):
+        st.markdown(f"**{i18n.t('problem.hint')}**")
+        st.markdown(d["hint"])
+    st.caption(i18n.t("problem.limit", t=d.get("time_limit", 3), m=d.get("memory_limit", 128)))
+
+
 # ================= 用户 / 我的 =================
 def render_profile():
     if not _require_login():
         return
     user = api_client.current_user()
 
-    role_txt = {"admin": i18n.t("admin"), "user": "user", "banned": "banned"}.get(
-        user["role"], user["role"]
-    )
+    role_txt = i18n.t("admin") if user["role"] == "admin" else "user"
     theme.hero(
         title=f"👋 {user['username']}",
-        subtitle=f"{i18n.t('sidebar.user')} · {role_txt}",
+        subtitle=f"{role_txt}  ·  ID {user.get('user_id', '—')}",
         chip=i18n.t("user.my_info"),
     )
 
@@ -52,12 +102,15 @@ def render_profile():
     if status == 200:
         info = body["data"]
         theme.stat_cards([
-            {"label": i18n.t("user.submits", n=info["submit_count"]), "value": info["submit_count"],
+            {"label": i18n.t("user.submit_count"), "value": info["submit_count"],
              "hint": i18n.t("solve.my_records")},
-            {"label": i18n.t("user.resolved", n=info["resolve_count"]), "value": info["resolve_count"],
-             "hint": i18n.t("user.join_time")},
+            {"label": i18n.t("user.resolve_count"), "value": info["resolve_count"],
+             "hint": "✓ solved"},
+            {"label": i18n.t("user.join_label"), "value": info["join_time"][:10],
+             "hint": f"user_id {user['user_id']}"},
         ])
-        st.caption(f"🕒 {i18n.t('user.join_time')}：{info['join_time']}　·　ID：{user['user_id']}")
+    else:
+        st.error(body.get("msg", i18n.t("error_occurred")))
 
     if user["role"] == "admin":
         _profile_admin_panel(user)
@@ -73,13 +126,14 @@ def _profile_admin_panel(user) -> None:
         st.caption(i18n.t("user.total", n=data["total"]))
         roles = ["admin", "user", "banned"]
         for u in data["users"]:
-            with st.expander(f"{u['username']}（{u['role']}）"):
+            with st.expander(f"{u['username']}　（{u['role']}）"):
                 st.caption(f"user_id：{u['user_id']}　·　{u['join_time']}")
                 c1, c2, c3 = st.columns([2, 1, 1])
                 with c1:
                     new_role = st.selectbox(
                         i18n.t("user.role"), roles,
-                        index=roles.index(u["role"]), key=f"role_{u['user_id']}",
+                        index=roles.index(u["role"]) if u["role"] in roles else 1,
+                        key=f"role_{u['user_id']}",
                     )
                 with c2:
                     st.caption(f"⬆ {u['submit_count']}　✓ {u['resolve_count']}")
@@ -108,18 +162,20 @@ def _profile_admin_panel(user) -> None:
             s2, b2 = api_client.request(
                 "POST", "/api/users/admin", json_body={"username": username, "password": password}
             )
-            st.success(i18n.t("user.create_ok")) if s2 == 200 else st.error(
-                b2.get("msg", i18n.t("error_occurred"))
-            )
+            if s2 == 200:
+                st.success(i18n.t("user.create_ok"))
+            else:
+                st.error(b2.get("msg", i18n.t("error_occurred")))
 
     st.divider()
     theme.section(i18n.t("user.system_reset"))
     st.caption(i18n.t("user.reset_hint"))
+    confirm = st.session_state.get("confirm_reset", False)
     if st.button(
-        st.session_state.get("confirm_reset")
-        and i18n.t("user.reset_confirm_btn") or i18n.t("user.reset_btn")
+        i18n.t("user.reset_confirm_btn") if confirm else i18n.t("user.reset_btn"),
+        type="secondary",
     ):
-        if not st.session_state.get("confirm_reset"):
+        if not confirm:
             st.session_state["confirm_reset"] = True
             st.rerun()
         else:
@@ -136,11 +192,12 @@ def _profile_admin_panel(user) -> None:
 
 # ================= 题目（浏览 + 管理） =================
 def render_problems():
-    st.title(i18n.t("problem.title"))
-
     if not _require_login():
         return
     user = api_client.current_user()
+
+    theme.hero(i18n.t("problem.title"), subtitle=i18n.t("problem.list"),
+               chip="Problems")
 
     status, body = api_client.request("GET", "/api/problems/")
     if status != 200:
@@ -151,40 +208,22 @@ def render_problems():
     def _title_of(pid):
         for p in problems:
             if p["id"] == pid:
-                return p["title"]
+                return f"{p['id']} · {p['title']}"
         return pid
 
-    st.subheader(i18n.t("problem.list"))
     if problems:
         selected = st.selectbox(i18n.t("problem.select"), [p["id"] for p in problems],
                                 format_func=_title_of, key="pb_select")
         s2, b2 = api_client.request("GET", f"/api/problems/{selected}")
         if s2 == 200:
             d = b2["data"]
-            with st.expander(f"{d['id']} - {d['title']}", expanded=True):
-                st.markdown(f"**{i18n.t('problem.desc')}**：{d['description']}")
-                st.markdown(f"**{i18n.t('problem.input_desc')}**：{d['input_description']}")
-                st.markdown(f"**{i18n.t('problem.output_desc')}**：{d['output_description']}")
-                st.markdown(f"**{i18n.t('problem.samples')}**：")
-                for smp in d["samples"]:
-                    st.code(
-                        f"{i18n.t('solve.input_label')}：{smp['input']}\n"
-                        f"{i18n.t('solve.output_label')}：{smp['output']}"
-                    )
-                st.markdown(f"**{i18n.t('problem.constraints')}**：{d['constraints']}")
-                st.caption(i18n.t("problem.limit", t=d["time_limit"], m=d["memory_limit"]))
-                if d.get("tags"):
-                    st.markdown(f"**{i18n.t('problem.tags')}**：{', '.join(d['tags'])}")
-                if d.get("public_cases"):
-                    st.caption(i18n.t("problem.public_log"))
-
-                c1, c2, c3 = st.columns([2, 1, 1])
+            with st.expander(f"{d['id']} · {d['title']}", expanded=True):
+                _problem_meta(d)
+                _problem_statement(d)
+                c1, c2 = st.columns([2, 1])
                 with c1:
-                    # 用 on_click 回调跳转到"做题"，避免在 radio(main_nav) 实例化后改其 state
-                    if st.button(
-                        i18n.t("problem.solve_btn"), key=f"go_{d['id']}", type="primary",
-                        on_click=_go_solve, args=(d["id"],),
-                    ):
+                    if st.button(i18n.t("problem.solve_btn"), key=f"go_{d['id']}",
+                                 type="primary", on_click=_go_solve, args=(d["id"],)):
                         pass
                 if user["role"] == "admin":
                     with c2:
@@ -200,19 +239,20 @@ def render_problems():
 
     # ---- 管理（仅 admin） ----
     if user["role"] != "admin":
-        st.divider()
-        st.caption(i18n.t("user.only_admin_manage"))
         return
 
     st.divider()
-    st.subheader(i18n.t("problem.add"))
+    theme.section(i18n.t("problem.add"))
     with st.form("add_problem"):
-        pid = st.text_input(i18n.t("problem.id"))
-        title = st.text_input(i18n.t("problem.title_req"))
-        description = st.text_area(i18n.t("problem.desc"))
-        input_desc = st.text_area(i18n.t("problem.input_desc"))
-        output_desc = st.text_area(i18n.t("problem.output_desc"))
-        constraints = st.text_input(i18n.t("problem.constraints"))
+        c1, c2 = st.columns(2)
+        with c1:
+            pid = st.text_input(i18n.t("problem.id"))
+            description = st.text_area(i18n.t("problem.desc"))
+            input_desc = st.text_area(i18n.t("problem.input_desc"))
+        with c2:
+            title = st.text_input(i18n.t("problem.title_req"))
+            output_desc = st.text_area(i18n.t("problem.output_desc"))
+            constraints = st.text_input(i18n.t("problem.constraints"))
         samples = st.text_area(i18n.t("problem.samples") + " (JSON)",
                                value='[{"input": "1 2", "output": "3"}]')
         testcases = st.text_area("Testcases (JSON)",
@@ -226,7 +266,7 @@ def render_problems():
             author = st.text_input(i18n.t("problem.author"))
             difficulty = st.text_input(i18n.t("problem.difficulty"))
             public_cases = st.checkbox(i18n.t("problem.public_log_toggle"))
-        if st.form_submit_button(i18n.t("problem.add_btn")):
+        if st.form_submit_button(i18n.t("problem.add_btn"), type="primary"):
             try:
                 sj = json.loads(samples)
                 tj = json.loads(testcases)
@@ -243,14 +283,14 @@ def render_problems():
                     "author": author, "difficulty": difficulty, "public_cases": public_cases,
                 }
                 s3, b3 = api_client.request("POST", "/api/problems/", json_body=payload)
-                st.success(i18n.t("problem.add_ok")) if s3 == 200 else st.error(
-                    b3.get("msg", i18n.t("error_occurred"))
-                )
                 if s3 == 200:
+                    st.success(i18n.t("problem.add_ok"))
                     st.rerun()
+                else:
+                    st.error(b3.get("msg", i18n.t("error_occurred")))
 
     st.divider()
-    st.subheader(i18n.t("problem.edit"))
+    theme.section(i18n.t("problem.edit"))
     if problems:
         edit_id = st.selectbox(i18n.t("problem.edit_select"), [p["id"] for p in problems],
                                key="pb_edit_select")
@@ -258,13 +298,16 @@ def render_problems():
         if s2 == 200:
             d = b2["data"]
             with st.form(f"edit_{edit_id}"):
-                title = st.text_input(i18n.t("problem.title_req"), value=d["title"])
-                description = st.text_area(i18n.t("problem.desc"), value=d["description"])
-                input_desc = st.text_area(i18n.t("problem.input_desc"), value=d["input_description"])
-                output_desc = st.text_area(i18n.t("problem.output_desc"), value=d["output_description"])
-                constraints = st.text_input(i18n.t("problem.constraints"), value=d["constraints"])
-                samples = st.text_area(i18n.t("problem.samples") + " (JSON)",
-                                       value=json.dumps(d["samples"], ensure_ascii=False))
+                c1, c2 = st.columns(2)
+                with c1:
+                    title = st.text_input(i18n.t("problem.title_req"), value=d["title"])
+                    description = st.text_area(i18n.t("problem.desc"), value=d["description"])
+                    input_desc = st.text_area(i18n.t("problem.input_desc"), value=d["input_description"])
+                with c2:
+                    output_desc = st.text_area(i18n.t("problem.output_desc"), value=d["output_description"])
+                    constraints = st.text_input(i18n.t("problem.constraints"), value=d["constraints"])
+                    samples = st.text_area(i18n.t("problem.samples") + " (JSON)",
+                                           value=json.dumps(d["samples"], ensure_ascii=False))
                 testcases = st.text_area("Testcases (JSON)",
                                          value=json.dumps(d["testcases"], ensure_ascii=False))
                 time_limit = st.number_input(i18n.t("problem.time_limit"),
@@ -273,7 +316,7 @@ def render_problems():
                                                value=int(d["memory_limit"]))
                 public_cases = st.checkbox(i18n.t("problem.public_log_toggle"),
                                            value=bool(d.get("public_cases", False)))
-                if st.form_submit_button(i18n.t("problem.save_btn")):
+                if st.form_submit_button(i18n.t("problem.save_btn"), type="primary"):
                     try:
                         sj = json.loads(samples)
                         tj = json.loads(testcases)
@@ -301,11 +344,11 @@ def render_problems():
 
 # ================= 做题 =================
 def render_solve():
-    st.title(i18n.t("solve.title"))
-
     if not _require_login():
         return
     user = api_client.current_user()
+
+    theme.hero(i18n.t("solve.title"), chip="Solve")
 
     # 从"题目"跳转自动选中
     default_problem = st.session_state.pop("pending_problem", None)
@@ -336,56 +379,29 @@ def render_solve():
 
     with left:
         st.markdown(
-            f"<div class='sec-title'>{detail.get('id', problem_id)} · {detail.get('title', '')}</div>",
+            f"<div class='sec-title'>{_esc(detail.get('id', problem_id))} · "
+            f"{_esc(detail.get('title', ''))}</div>",
             unsafe_allow_html=True,
         )
-        # 难度 + 标签 + 限制 chips
-        meta = []
-        if detail.get("difficulty"):
-            meta.append(f"<span class='chip'>🌡 {detail['difficulty']}</span>")
-        if detail.get("source"):
-            meta.append(f"<span class='chip'>📚 {detail['source']}</span>")
-        if detail.get("tags"):
-            meta.append("".join(f"<span class='chip'>#{t}</span>" for t in detail["tags"]))
-        if meta:
-            st.markdown(
-                f"<div style='margin:-.2rem 0 .5rem 0'>{''.join(meta)}</div>",
-                unsafe_allow_html=True,
-            )
-        st.markdown(f"**{i18n.t('problem.desc')}**")
-        st.markdown(detail.get("description", "（—）"))
-        st.markdown(f"**{i18n.t('problem.input_desc')}**")
-        st.markdown(detail.get("input_description", ""))
-        st.markdown(f"**{i18n.t('problem.output_desc')}**")
-        st.markdown(detail.get("output_description", ""))
-        if detail.get("samples"):
-            st.markdown(f"**{i18n.t('problem.samples')}**")
-            for smp in detail["samples"]:
-                st.code(
-                    f"{i18n.t('solve.input_label')}：\n{smp.get('input', '')}\n\n"
-                    f"{i18n.t('solve.output_label')}：\n{smp.get('output', '')}"
-                )
-        if detail.get("constraints"):
-            st.markdown(f"**{i18n.t('problem.constraints')}**：{detail['constraints']}")
-        st.caption(i18n.t("problem.limit", t=detail.get("time_limit", 3),
-                          m=detail.get("memory_limit", 128)))
+        _problem_meta(detail)
+        _problem_statement(detail)
 
     with right:
-        st.subheader(i18n.t("solve.submit_code"))
+        st.markdown(f"<div class='sec-title'>{_esc(i18n.t('solve.submit_code'))}</div>",
+                    unsafe_allow_html=True)
         if not languages:
             st.warning(i18n.t("solve.no_lang"))
         else:
             language = st.selectbox(i18n.t("solve.language"), languages, key="sub_lang")
             ace_mode = {"python": "python", "cpp": "c_cpp"}.get(language, "plain_text")
-            # 代码编辑器跟随亮/暗主题（避免亮色页面里嵌一大块深色编辑器过于突兀）
             ace_theme = "chrome" if theme.current_mode() == "light" else "monokai"
             code = st_ace(
                 value=st.session_state.get(f"draft_{problem_id}", ""),
                 language=ace_mode, theme=ace_theme, keybinding="vscode",
-                font_size=14, tab_size=4, min_lines=12, auto_update=True,
+                font_size=14, tab_size=4, min_lines=14, auto_update=True,
                 key=f"ace_{problem_id}",
             )
-            if st.button(i18n.t("solve.submit_btn"), type="primary"):
+            if st.button(i18n.t("solve.submit_btn"), type="primary", use_container_width=True):
                 if not code.strip():
                     st.error(i18n.t("solve.code_empty"))
                 else:
@@ -421,7 +437,7 @@ def render_solve():
         st.info(i18n.t("solve.records_none"))
         return
 
-    st.write(i18n.t("solve.total", n=body["data"]["total"]))
+    st.caption(i18n.t("solve.total", n=body["data"]["total"]))
     rows = []
     for s in subs[:50]:
         t = next((p["title"] for p in problems if p["id"] == s.get("problem_id")),
@@ -470,13 +486,13 @@ def render_solve():
 
 # ================= AI =================
 def render_ai():
-    st.title(i18n.t("ai.title"))
-
     if not _require_login():
         return
     if api_client.current_user()["role"] != "admin":
         st.error(i18n.t("teacher_only"))
         return
+
+    theme.hero(i18n.t("ai.title"), chip="AI Generate")
 
     if "ai_msg" in st.session_state:
         st.success(st.session_state["ai_msg"])
@@ -495,23 +511,26 @@ def render_ai():
             st.caption(i18n.t("ai.cur_config", url=cfg["provider_url"], model=cfg["model"],
                               src=src_label, key_state=key_state, mode=mode_txt))
             with st.form("ai_config"):
-                provider_url = st.text_input(i18n.t("ai.provider_url"), value=cfg.get("provider_url", ""))
-                model = st.text_input(i18n.t("ai.model"), value=cfg.get("model", ""))
-                api_key = st.text_input(i18n.t("ai.api_key"), type="password",
-                                        placeholder=i18n.t("ai.api_key_ph"))
                 c1, c2 = st.columns(2)
                 with c1:
-                    in_p = st.number_input(i18n.t("ai.in_price"),
-                                           value=float(cfg.get("input_price") or 0.0),
-                                           step=0.1, format="%.6f")
-                    out_p = st.number_input(i18n.t("ai.out_price"),
-                                            value=float(cfg.get("output_price") or 0.0),
-                                            step=0.1, format="%.6f")
+                    provider_url = st.text_input(i18n.t("ai.provider_url"), value=cfg.get("provider_url", ""))
+                    api_key = st.text_input(i18n.t("ai.api_key"), type="password",
+                                            placeholder=i18n.t("ai.api_key_ph"))
                 with c2:
+                    model = st.text_input(i18n.t("ai.model"), value=cfg.get("model", ""))
                     unit = st.number_input(i18n.t("ai.price_unit"),
                                            value=int(cfg.get("price_unit") or 1000000),
                                            min_value=1, step=100000)
-                if st.form_submit_button(i18n.t("ai.save_config")):
+                c3, c4 = st.columns(2)
+                with c3:
+                    in_p = st.number_input(i18n.t("ai.in_price"),
+                                           value=float(cfg.get("input_price") or 0.0),
+                                           step=0.1, format="%.6f")
+                with c4:
+                    out_p = st.number_input(i18n.t("ai.out_price"),
+                                            value=float(cfg.get("output_price") or 0.0),
+                                            step=0.1, format="%.6f")
+                if st.form_submit_button(i18n.t("ai.save_config"), type="primary"):
                     payload = {
                         "provider_url": provider_url.strip(), "model": model.strip(),
                         "api_key": api_key or None,
@@ -526,10 +545,10 @@ def render_ai():
         else:
             st.error(bc.get("msg", i18n.t("error_occurred")))
 
-    st.subheader(i18n.t("ai.gen_title"))
+    theme.section(i18n.t("ai.gen_title"))
     with st.form("ai_task"):
         requirement = st.text_area(i18n.t("ai.requirement"), placeholder=i18n.t("ai.requirement_ph"))
-        if st.form_submit_button(i18n.t("ai.gen_btn")):
+        if st.form_submit_button(i18n.t("ai.gen_btn"), type="primary"):
             if not requirement.strip():
                 st.error(i18n.t("ai.req_empty"))
             else:
@@ -545,12 +564,15 @@ def render_ai():
 
     if "ai_task_id" in st.session_state:
         st.divider()
-        st.subheader(i18n.t("ai.task_status"))
+        theme.section(i18n.t("ai.task_status"))
         s, b = api_client.request("GET", f"/api/ai/problem-tasks/{st.session_state['ai_task_id']}")
         if s == 200:
             d = b["data"]
-            st.write(i18n.t("ai.task", id=d["task_id"][:12]))
-            st.write(i18n.t("ai.status", s=d["status"]))
+            st.markdown(
+                f"{theme.status_badge(d['status'])}　"
+                f"<span style='opacity:.6'>task {_esc(d['task_id'][:12])}</span>",
+                unsafe_allow_html=True,
+            )
             if d.get("progress"):
                 st.write(i18n.t("ai.progress", p=d["progress"]))
             if d.get("usage"):
@@ -558,18 +580,18 @@ def render_ai():
                 st.caption(i18n.t("ai.usage", i=u["input_tokens"], o=u["output_tokens"],
                                   t=u["total_tokens"], c=u["cost"], cur=u["currency"]))
             if d.get("result"):
-                st.write(i18n.t("ai.result_ok"))
+                st.markdown(f"**{i18n.t('ai.result_ok')}**")
                 st.json(d["result"])
             c1, c2 = st.columns(2)
             with c1:
-                if st.button(i18n.t("refresh")):
+                if st.button(i18n.t("refresh"), use_container_width=True):
                     st.rerun()
             with c2:
-                if st.button(i18n.t("ai.clear_task")):
+                if st.button(i18n.t("ai.clear_task"), use_container_width=True):
                     st.session_state.pop("ai_task_id", None)
                     st.rerun()
         else:
             st.error(b.get("msg", i18n.t("error_occurred")))
 
     st.divider()
-    st.info(i18n.t("ai.auto_add_hint"))
+    st.caption(i18n.t("ai.auto_add_hint"))
