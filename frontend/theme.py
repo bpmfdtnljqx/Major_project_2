@@ -162,6 +162,16 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     color: {p['text']} !important;
     box-shadow: none !important;
 }}
+/* Selectbox 内部 value / input 文字（baseweb 嵌套很深，强制所有层覆盖） */
+[data-baseweb="select"] input,
+[data-baseweb="select"] [class*="SingleValue"],
+[data-baseweb="select"] [class*="ValueContainer"],
+[data-baseweb="select"] [class*="Placeholder"],
+[data-baseweb="select"] [class*="Input"] {{
+    background: transparent !important;
+    color: {p['text']} !important;
+    -webkit-text-fill-color: {p['text']} !important;
+}}
 [data-baseweb="select"] [data-baseweb="select-value"],
 [data-baseweb="select"] [data-baseweb="select-value"] > div {{
     color: {p['text']} !important;
