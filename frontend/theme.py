@@ -75,12 +75,28 @@ def inject() -> None:
     # f-string 里 CSS 的花括号需写 {{ }}；颜色占位用 {p['...']}
     css = f"""
 <style id="wb-theme">
-/* ============ 隐藏 Streamlit 原生工具栏 / 装饰 / 页脚 ============ */
+/* ============ 关键：先加载 Material Icons 字体（必须第一行 @import；display=block 防文字先现） ============ */
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons&display=block');
+
+/* ============ 隐藏 Streamlit 原生工具栏 / 装饰 / 页脚 / 侧边栏折叠按钮 ============ */
+/* stExpandSidebarButton 用 material icon 渲染折叠/展开箭头；侧边栏很薄，不需要折叠，直接隐藏避免
+   字体未加载时 fallback 文字 "keyboard_double_arrow_right" 出现在侧边栏顶部。*/
 [data-testid="stToolbar"] {{ display: none !important; }}
 [data-testid="stDecoration"] {{ display: none !important; }}
 #MainMenu {{ display: none !important; }}
 footer {{ display: none !important; }}
+[data-testid="stExpandSidebarButton"] {{ display: none !important; }}
 header[data-testid="stHeader"] {{ background: transparent !important; }}
+
+/* ============ 全局 Material Icons 字体（让密码 reveal、expander 箭头、按钮图标正常） ============ */
+[data-baseweb="icon"], [class*="material-icons"] {{
+    font-family: 'Material Icons' !important;
+    font-weight: normal !important; font-style: normal !important;
+    line-height: 1; letter-spacing: normal; word-wrap: normal;
+    white-space: nowrap; direction: ltr; display: inline-block;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+}}
 
 /* ============ 全局背景 / 文字 ============ */
 .stApp, [data-testid="stAppViewContainer"], .main {{
@@ -189,9 +205,11 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     filter: brightness(1.07);
 }}
 
-/* ============ st.pills 顶部导航（原生 pill，无圆点） ============ */
-[data-testid="stPills"] {{ gap: .3rem; }}
-[data-testid="stPills"] button {{
+/* ============ stButtonGroup（pills + segmented_control 共用，Streamlit 1.63 真实 testid） ============ */
+/* 注：st.pills 与 st.segmented_control 前端共用 ButtonGroup 组件，testid 都是 stButtonGroup。
+   选择器：[aria-checked="true"] / [aria-pressed="true"] 双覆盖。 */
+[data-testid="stButtonGroup"] {{ gap: .3rem; }}
+[data-testid="stButtonGroup"] button {{
     background: transparent !important;
     color: {p['dim']} !important;
     border: 1px solid transparent !important;
@@ -200,29 +218,22 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     font-weight: 600; font-size: .92rem !important;
     transition: all .15s ease;
 }}
-[data-testid="stPills"] button:hover {{
+[data-testid="stButtonGroup"] button:hover {{
     color: {p['text']} !important; background: {p['surface_hi']} !important;
 }}
-[data-testid="stPills"] button[aria-selected="true"] {{
+[data-testid="stButtonGroup"] [aria-checked="true"],
+[data-testid="stButtonGroup"] [aria-pressed="true"] {{
     background: {p['accent_soft']} !important;
     color: {p['accent']} !important;
     border-color: {p['accent_line']} !important;
     font-weight: 700 !important;
 }}
 
-/* ============ segmented_control（语言切换） ============ */
-[data-testid="stSegmentedControl"] {{
-    background: {p['surface_hi']} !important;
-    border: 1px solid {p['border']} !important;
-    border-radius: 9px !important; padding: 2px !important;
-}}
-[data-testid="stSegmentedControl"] button {{
-    color: {p['dim']} !important; border-radius: 7px !important;
-    font-weight: 600; font-size: .85rem !important;
-}}
-[data-testid="stSegmentedControl"] button[aria-checked="true"] {{
-    background: {p['surface']} !important; color: {p['text']} !important;
-    box-shadow: 0 1px 2px rgba(0,0,0,.12) !important;
+/* ============ segmented_control 容器（语言切换）：浅底圆角分隔 ============ */
+[data-testid="stButtonGroup"]:has(button[aria-checked="true"]) {{
+    background: {p['surface_hi']};
+    border: 1px solid {p['border']};
+    border-radius: 9px; padding: 2px;
 }}
 
 /* ============ Tabs（登录页用） ============ */
@@ -263,10 +274,17 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     border-radius: 10px !important;
 }}
 [data-testid="stCodeBlock"] code, .stCodeBlock code {{ color: {p['text']} !important; }}
+/* streamlit-ace 代码编辑器：明确容器+iframe 背景与边框，避免下半截露出 Streamlit 默认深色 */
 iframe[title*="streamlit_ace"] {{
     border: 1px solid {p['border_hi']} !important;
     border-radius: 10px !important;
-    min-height: 320px !important;
+    min-height: 340px !important;
+    background: {p['input_bg']} !important;
+    color-scheme: light dark;
+}}
+/* streamlit-ace 外层 div（没有 testid，靠属性匹配） */
+div:has(> iframe[title*="streamlit_ace"]) {{
+    background: transparent !important;
 }}
 
 /* ============ Form 容器 ============ */
