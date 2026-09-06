@@ -73,8 +73,8 @@ def _problem_statement(d: dict) -> None:
     if samples:
         st.markdown(f"**{i18n.t('problem.samples')}**")
         for i, smp in enumerate(samples, 1):
-            theme.code_block(f"{i18n.t('solve.input_label')} #{i}", smp.get("input", ""))
-            theme.code_block(f"{i18n.t('solve.output_label')} #{i}", smp.get("output", ""))
+            theme.code_block(f"{i18n.t('solve.input_label')}", smp.get("input", ""))
+            theme.code_block(f"{i18n.t('solve.output_label')}", smp.get("output", ""))
     if d.get("constraints"):
         st.markdown(f"**{i18n.t('problem.constraints')}**")
         st.markdown(d["constraints"])

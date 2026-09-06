@@ -75,12 +75,12 @@ def inject() -> None:
     # f-string 里 CSS 的花括号需写 {{ }}；颜色占位用 {p['...']}
     css = f"""
 <style id="wb-theme">
-/* ============ 关键：先加载 Material Icons 字体（必须第一行 @import；display=block 防文字先现） ============ */
-@import url('https://fonts.googleapis.com/icon?family=Material+Icons&display=block');
+/* ============ 关键：先加载 Material Symbols Rounded 字体（Streamlit 1.63 iconFont 默认名） ============
+   注意：必须是 'Material Symbols Rounded'，不能是 'Material Icons'。Streamlit 的 DynamicIcon 组件
+   用 font-feature-settings: 'liga' 渲染 ligature，字体名不匹配会直接 fallback 成纯文字。*/
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded&display=block');
 
 /* ============ 隐藏 Streamlit 原生工具栏 / 装饰 / 页脚 / 侧边栏折叠按钮 ============ */
-/* stExpandSidebarButton 用 material icon 渲染折叠/展开箭头；侧边栏很薄，不需要折叠，直接隐藏避免
-   字体未加载时 fallback 文字 "keyboard_double_arrow_right" 出现在侧边栏顶部。*/
 [data-testid="stToolbar"] {{ display: none !important; }}
 [data-testid="stDecoration"] {{ display: none !important; }}
 #MainMenu {{ display: none !important; }}
@@ -88,12 +88,16 @@ footer {{ display: none !important; }}
 [data-testid="stExpandSidebarButton"] {{ display: none !important; }}
 header[data-testid="stHeader"] {{ background: transparent !important; }}
 
-/* ============ 全局 Material Icons 字体（让密码 reveal、expander 箭头、按钮图标正常） ============ */
-[data-baseweb="icon"], [class*="material-icons"] {{
-    font-family: 'Material Icons' !important;
+/* ============ 全局 Material Symbols Rounded 字体（让密码 reveal、expander 箭头等图标正常） ============
+   Streamlit 把图标渲染成 <span data-testid="stIconMaterial" translate="no">visibility</span>，
+   用 font-feature: 'liga' ligature 解析。字体名必须严格匹配 Material Symbols Rounded。 */
+[data-baseweb="icon"], [data-testid="stIconMaterial"],
+[class*="material-icons"], [class*="MaterialSymbols"] {{
+    font-family: 'Material Symbols Rounded' !important;
     font-weight: normal !important; font-style: normal !important;
     line-height: 1; letter-spacing: normal; word-wrap: normal;
     white-space: nowrap; direction: ltr; display: inline-block;
+    font-feature-settings: 'liga';
     -webkit-font-feature-settings: 'liga';
     -webkit-font-smoothing: antialiased;
 }}
@@ -162,12 +166,9 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     color: {p['text']} !important;
     box-shadow: none !important;
 }}
-/* Selectbox 内部 value / input 文字（baseweb 嵌套很深，强制所有层覆盖） */
-[data-baseweb="select"] input,
-[data-baseweb="select"] [class*="SingleValue"],
-[data-baseweb="select"] [class*="ValueContainer"],
-[data-baseweb="select"] [class*="Placeholder"],
-[data-baseweb="select"] [class*="Input"] {{
+/* Selectbox 内部所有后代文字强制主题色（baseweb 用 emotion 生成的 hash class，
+   没有 SingleValue/ValueContainer 字面类名，靠 * 强制覆盖。Popover 不在此选择器内所以下拉项不受影响） */
+[data-baseweb="select"] > div > div * {{
     background: transparent !important;
     color: {p['text']} !important;
     -webkit-text-fill-color: {p['text']} !important;
@@ -269,6 +270,12 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     background: {p['surface']} !important;
     color: {p['text']} !important; border: none !important;
     font-weight: 600;
+}}
+/* Expander summary 里的图标用主题色（避免 fallback 文字与正文混在一起） */
+.stExpander summary [data-testid="stIconMaterial"],
+[data-testid="stExpanderToggle"] summary [data-testid="stIconMaterial"] {{
+    color: {p['dim']} !important;
+    font-size: 1rem !important;
 }}
 .stExpander [data-testid="stExpanderDetails"] {{
     background: {p['surface']} !important;
