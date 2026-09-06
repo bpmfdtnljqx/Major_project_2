@@ -10,6 +10,7 @@ import streamlit as st
 from streamlit_ace import st_ace
 
 import api_client
+import code_block as cb
 import i18n
 import theme
 
@@ -167,10 +168,11 @@ def render_problems():
                 st.markdown(f"**{i18n.t('problem.output_desc')}**：{d['output_description']}")
                 st.markdown(f"**{i18n.t('problem.samples')}**：")
                 for smp in d["samples"]:
-                    st.code(
+                    code_text = (
                         f"{i18n.t('solve.input_label')}：{smp['input']}\n"
                         f"{i18n.t('solve.output_label')}：{smp['output']}"
                     )
+                    cb.code_block(code_text, language="python", key=f"sample_{d['id']}_{smp.get('input','')[:10]}")
                 st.markdown(f"**{i18n.t('problem.constraints')}**：{d['constraints']}")
                 st.caption(i18n.t("problem.limit", t=d["time_limit"], m=d["memory_limit"]))
                 if d.get("tags"):
@@ -361,10 +363,11 @@ def render_solve():
         if detail.get("samples"):
             st.markdown(f"**{i18n.t('problem.samples')}**")
             for smp in detail["samples"]:
-                st.code(
+                code_text = (
                     f"{i18n.t('solve.input_label')}：\n{smp.get('input', '')}\n\n"
                     f"{i18n.t('solve.output_label')}：\n{smp.get('output', '')}"
                 )
+                cb.code_block(code_text, language="python", key=f"sample_{problem_id}_{smp.get('input','')[:10]}")
         if detail.get("constraints"):
             st.markdown(f"**{i18n.t('problem.constraints')}**：{detail['constraints']}")
         st.caption(i18n.t("problem.limit", t=detail.get("time_limit", 3),
