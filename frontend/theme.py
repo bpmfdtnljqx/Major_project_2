@@ -199,8 +199,8 @@ div[data-testid="stRadio"]:not(:has(text)) {{ background: transparent !important
 }}
 
 /* ============ 关键修复：selectbox 下拉关闭时也是 input_bg（避免黑块） ============ */
-[data-baseweb="select"] [data-baseweb="select-value],
-[data-baseweb="select"] [data-baseweb="select-value] > div {{
+[data-baseweb="select"] [data-baseweb="select-value"],
+[data-baseweb="select"] [data-baseweb="select-value"] > div {{
     color: {pal['text']} !important;
 }}
 

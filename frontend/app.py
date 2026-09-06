@@ -57,6 +57,16 @@ def _top_lang() -> None:
     i18n.render_lang_bar()
 
 
+def _toggle_theme() -> None:
+    """切换亮/暗主题的 on_click 回调。
+
+    不显式 st.rerun()：Streamlit 会因 session_state 变更自动 rerun。
+    通过 'pre_theme_nav' 备份当前导航，rerun 后恢复，避免被跳回第一个页面。
+    """
+    st.session_state["pre_theme_nav"] = st.session_state.get("main_nav", "problems")
+    theme.toggle()
+
+
 def main():
     if not api_client.is_logged_in():
         # 未登录：语言切换 + 亮暗切换 + 登录/注册
@@ -66,9 +76,7 @@ def main():
         with c[2]:
             _mode = theme.current_mode()
             _label = "🌙 暗色" if _mode == "light" else "☀️ 亮色"
-            if st.button(_label, key="theme_toggle_prelogin"):
-                theme.toggle()
-                st.rerun()
+            st.button(_label, key="theme_toggle_prelogin", on_click=_toggle_theme)
         _auth_screen()
         return
 
@@ -85,9 +93,7 @@ def main():
         st.divider()
         _mode = theme.current_mode()
         _label = "🌙 暗色" if _mode == "light" else "☀️ 亮色"
-        if st.button(_label, use_container_width=True, key="theme_toggle"):
-            theme.toggle()   # 切换 session_state["ui_theme"]
-            st.rerun()       # 重新运行以重绘 :root 变量
+        st.button(_label, use_container_width=True, key="theme_toggle", on_click=_toggle_theme)
 
     # ---- 顶栏导航（按角色过滤）+ 语言切换同行 ----
     all_views = ["problems", "solve", "profile"]
@@ -103,6 +109,9 @@ def main():
         st.session_state["main_nav"] = "problems"
     if st.session_state["main_nav"] not in all_views:
         st.session_state["main_nav"] = all_views[0]
+    # 切换主题后恢复导航（避免跳回第一个页面）
+    if "pre_theme_nav" in st.session_state:
+        st.session_state["main_nav"] = st.session_state.pop("pre_theme_nav")
 
     col_nav, col_lang = st.columns([8, 2])
     with col_nav:
