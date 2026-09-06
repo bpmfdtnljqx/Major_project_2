@@ -25,8 +25,9 @@ LIGHT = dict(
     bg_grad_a="#ece7dd", bg_grad_b="#f5f2ec", bg_grad_c="#fbf9f4",
     card="#fbf9f4", raised="#efeae2",
     line="#d8d0c2", line_hi="#b9b0a0",
-    text="#2a241d", dim="#5a5346", faint="#8a8172",
-    accent="#b5712c", accent_dim="#8f5a22",
+    # 加深一档 dim/faint，避免 AI 页/expander 里看起来像水印
+    text="#1f1a13", dim="#3d362b", faint="#6c6356",
+    accent="#a8651f", accent_dim="#7e4d18",
     ok="#2f8a57", err="#bd4335", info="#3c639b",
     input_bg="#fdfcf8", code_bg="#efeae2",
 )
@@ -50,6 +51,12 @@ def inject() -> None:
 
     css = f"""
 <style id="wb-theme">
+/* ============ 隐藏 Streamlit 开发者工具栏 / 页脚 / 菜单 ============ */
+#MainMenu {{ visibility: hidden; }}
+[data-testid="stToolbar"] {{ display: none !important; }}
+[data-testid="stDecoration"] {{ display: none !important; }}
+footer {{ visibility: hidden; }}
+
 /* ============ 关键：覆盖 Streamlit 默认背景/文字（不用变量，避免失效） ============ */
 .stApp, [data-testid="stAppViewContainer"], .main {{
     background: linear-gradient(180deg, {pal['bg_grad_a']} 0%, {pal['bg_grad_b']} 60%, {pal['bg_grad_c']} 100%) !important;
@@ -86,6 +93,17 @@ def inject() -> None:
     background: {pal['input_bg']} !important;
     border-color: {pal['line_hi']} !important;
     border-radius: 10px !important;
+}}
+/* 密码框右侧的 reveal 按钮：baseweb 内部 button，亮色下默认深底，
+   必须设成跟卡片同色，否则出现一块深色方块挡住眼睛图标 */
+[data-baseweb="input"] button {{
+    background: transparent !important;
+    color: {pal['dim']} !important;
+    box-shadow: none !important;
+    border: none !important;
+}}
+[data-baseweb="input"] button:hover {{
+    color: {pal['accent']} !important;
 }}
 [data-baseweb="select"] > div,
 [data-baseweb="select"] > div > div {{
@@ -143,10 +161,15 @@ def inject() -> None:
 [data-testid="stBaseButton-primary"]:hover {{ filter: brightness(1.08); }}
 
 /* ============ radio / 顶部导航 ============ */
-/* 去掉 Streamlit 默认的未选中黑圆点；自定义胶囊 */
+/* 去掉 Streamlit 默认的未选中黑圆点；自定义胶囊。
+   注意：不要隐藏 svg —— Streamlit 1.30+ 的 radio 圆点是 [role="radio"] > div，
+   而隐藏 svg 会顺带干掉 Streamlit 内部的折叠/部署/图标，导致 aria-label fallback
+   文字（如 keyboard_double_arrow、Deploy）出现在奇怪的位置。
+*/
 div[data-testid="stRadio"] label > div:first-child,
-div[data-testid="stRadio"] [role="radio"] > div,
-div[data-testid="stRadio"] svg {{ display: none !important; }}
+div[data-testid="stRadio"] [role="radio"] > div {{
+    display: none !important;
+}}
 div[data-testid="stRadio"] label {{
     color: {pal['dim']} !important;
     padding: .35rem .95rem; border-radius: 999px;
