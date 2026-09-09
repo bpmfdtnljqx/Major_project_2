@@ -143,7 +143,7 @@ _STRINGS = {
     "solve.rate_limit": {"zh": "提交过于频繁，请稍后再试（1 分钟内最多 3 次）", "en": "Too many submissions. Please wait (max 3 per minute)."},
     "solve.submitted": {"zh": "已提交，submission_id：{id}，可查看下方记录", "en": "Submitted. submission_id: {id}. See records below."},
     "solve.my_records": {"zh": "我的提交记录", "en": "My Submissions"},
-    "solve.records_none": {"zh": "暂无提交记录，去上面选一道题开始吧", "en": "No submissions yet. Pick a problem above."},
+    "solve.records_none": {"zh": "暂无提交记录", "en": "No submissions"},
     "solve.total": {"zh": "共 {n} 条提交", "en": "{n} submissions"},
     "solve.col_id": {"zh": "提交号", "en": "ID"},
     "solve.col_problem": {"zh": "题目", "en": "Problem"},
