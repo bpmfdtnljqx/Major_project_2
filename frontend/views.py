@@ -395,11 +395,13 @@ def render_solve():
             language = st.selectbox(i18n.t("solve.language"), languages, key="sub_lang")
             ace_mode = {"python": "python", "cpp": "c_cpp"}.get(language, "plain_text")
             ace_theme = "chrome" if theme.current_mode() == "light" else "monokai"
+            # epoch 用于提交成功后强制重挂载编辑器（清空代码区）
+            ace_epoch = st.session_state.get("ace_epoch", 0)
             code = st_ace(
                 value=st.session_state.get(f"draft_{problem_id}", ""),
                 language=ace_mode, theme=ace_theme, keybinding="vscode",
                 font_size=14, tab_size=4, height=420, auto_update=True,
-                key=f"ace_{problem_id}",
+                key=f"ace_{problem_id}_{ace_epoch}",
             )
             if st.button(i18n.t("solve.submit_btn"), type="primary", use_container_width=True):
                 if not code.strip():
@@ -411,6 +413,9 @@ def render_solve():
                         json_body={"problem_id": problem_id, "language": language, "code": code},
                     )
                     if s2 == 200:
+                        # 提交成功：清空草稿 + 递增 epoch 强制重挂载，代码区变空
+                        st.session_state[f"draft_{problem_id}"] = ""
+                        st.session_state["ace_epoch"] = ace_epoch + 1
                         st.session_state["submit_msg"] = i18n.t(
                             "solve.submitted", id=b2["data"]["submission_id"]
                         )
