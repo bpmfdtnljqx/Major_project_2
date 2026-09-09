@@ -202,6 +202,9 @@ _STRINGS = {
     },
     "ai.result_ok": {"zh": "生成的题目（已自动加入题库）：", "en": "Generated problem (auto-added to bank):"},
     "ai.clear_task": {"zh": "清除此任务", "en": "Clear task"},
+    "ai.cancel_btn": {"zh": "中断任务", "en": "Cancel task"},
+    "ai.cancelled": {"zh": "任务已中断", "en": "Task cancelled"},
+    "ai.case_count": {"zh": "测试点", "en": "Test cases"},
     "ai.auto_add_hint": {"zh": "生成的题目会自动加入「题目」页面的题库，可直接用于评测。", "en": "Generated problems are auto-added to the Problems page and ready for judging."},
 }
 

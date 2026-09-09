@@ -584,13 +584,24 @@ def render_ai():
                 st.caption(i18n.t("ai.usage", i=u["input_tokens"], o=u["output_tokens"],
                                   t=u["total_tokens"], c=u["cost"], cur=u["currency"]))
             if d.get("result"):
-                st.markdown(f"**{i18n.t('ai.result_ok')}**")
-                st.json(d["result"])
-            c1, c2 = st.columns(2)
+                _render_ai_result(d["result"])
+            c1, c2, c3 = st.columns(3)
             with c1:
                 if st.button(i18n.t("refresh"), use_container_width=True):
                     st.rerun()
             with c2:
+                # 仅运行中可中断
+                if d["status"] in ("pending", "running"):
+                    if st.button(i18n.t("ai.cancel_btn"), use_container_width=True):
+                        sc, bc = api_client.request(
+                            "PUT", f"/api/ai/problem-tasks/{st.session_state['ai_task_id']}/cancel"
+                        )
+                        if sc == 200:
+                            st.session_state["ai_msg"] = i18n.t("ai.cancelled")
+                            st.rerun()
+                        else:
+                            st.error(bc.get("msg", i18n.t("error_occurred")))
+            with c3:
                 if st.button(i18n.t("ai.clear_task"), use_container_width=True):
                     st.session_state.pop("ai_task_id", None)
                     st.rerun()
@@ -599,3 +610,38 @@ def render_ai():
 
     st.divider()
     st.caption(i18n.t("ai.auto_add_hint"))
+
+
+def _render_ai_result(result: dict) -> None:
+    """卡片化预览 AI 生成的题目（替换裸 JSON，提升易用性）。"""
+    st.markdown(f"**{i18n.t('ai.result_ok')}**")
+    meta = []
+    if result.get("difficulty"):
+        meta.append(f'<span class="diff diff-{_diff_lvl(result["difficulty"])}">{_esc(result["difficulty"])}</span>')
+    for t in result.get("tags", []) or []:
+        meta.append(theme.chip(f"#{t}"))
+    meta.append(theme.chip(f"{i18n.t('ai.case_count')} × {len(result.get('testcases', []))}"))
+    st.markdown(
+        f'<div class="pb-title" style="font-size:1.25rem;margin:.4rem 0 .2rem">{_esc(result.get("title", ""))}</div>'
+        f'<div class="pb-meta" style="margin:.2rem 0 .6rem">{"".join(meta)}</div>',
+        unsafe_allow_html=True,
+    )
+    with st.expander(i18n.t("problem.desc"), expanded=True):
+        st.markdown(result.get("description", ""))
+    if result.get("input_description"):
+        st.markdown(f"**{i18n.t('problem.input_desc')}**")
+        st.markdown(result["input_description"])
+    if result.get("output_description"):
+        st.markdown(f"**{i18n.t('problem.output_desc')}**")
+        st.markdown(result["output_description"])
+    if result.get("samples"):
+        st.markdown(f"**{i18n.t('problem.samples')}**")
+        for smp in result["samples"]:
+            theme.code_block(i18n.t("solve.input_label"), smp.get("input", ""))
+            theme.code_block(i18n.t("solve.output_label"), smp.get("output", ""))
+    if result.get("constraints"):
+        st.markdown(f"**{i18n.t('problem.constraints')}**")
+        st.markdown(result["constraints"])
+    if result.get("hint"):
+        st.markdown(f"**{i18n.t('problem.hint')}**")
+        st.markdown(result["hint"])

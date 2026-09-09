@@ -118,18 +118,30 @@ async def create_ai_task(request: Request, body: AITaskCreate, current: dict = D
 
 
 async def _run_ai_task(app, task_id: str, requirement: str):
-    """后台执行命题任务：调 LLM → 自动加入题库 → 更新状态。"""
+    """后台执行命题任务：调 LLM → 自动加入题库 → 更新状态。
+
+    进度分多个阶段推进，供前端轮询展示；中断通过 status='cancelled' 标志，
+    在 LLM 调用前、返回后、写库前检查，阻止已中断的任务继续产生副作用。
+    """
     ai_store = app.state.ai_store
     problem_store = app.state.problem_store
     try:
-        ai_store.update_task(task_id, status="running", progress="正在生成题目")
-        if ai_store.get_task(task_id)["status"] == "cancelled":
+        def _cancelled() -> bool:
+            return ai_store.get_task(task_id)["status"] == "cancelled"
+
+        ai_store.update_task(task_id, status="running", progress="正在分析命题需求")
+        if _cancelled():
             return
 
         config = ai_store.get_config()
+        ai_store.update_task(task_id, progress="正在调用模型生成题目")
         problem, usage = await asyncio.to_thread(generate_problem, requirement, config)
 
-        if ai_store.get_task(task_id)["status"] == "cancelled":
+        if _cancelled():
+            return
+
+        ai_store.update_task(task_id, progress="正在校验生成结果")
+        if _cancelled():
             return
 
         # 自动加入题库（体验优先，教师/助教无需手动导入）
