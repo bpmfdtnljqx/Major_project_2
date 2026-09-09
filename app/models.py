@@ -74,8 +74,8 @@ class SubmissionCreate(BaseModel):
 class Credentials(BaseModel):
     """用户名密码凭证（登录 / 注册共用）。"""
 
-    username: str = Field(..., description="用户名")
-    password: str = Field(..., description="密码")
+    username: str = Field(..., min_length=1, description="用户名")
+    password: str = Field(..., min_length=1, description="密码")
 
 
 class RoleUpdate(BaseModel):

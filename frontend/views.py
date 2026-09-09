@@ -202,12 +202,12 @@ def _profile_admin_panel(user) -> None:
             f_problem = st.text_input(i18n.t("solve.filter_problem"))
         if st.form_submit_button(i18n.t("solve.filter_btn"), type="primary"):
             st.session_state["sub_filter_state"] = {
-                "user_id": f_user.strip() or None,
+                "username": f_user.strip() or None,
                 "problem_id": f_problem.strip() or None,
             }
             st.rerun()
     flt = st.session_state.get("sub_filter_state")
-    if flt and (flt["user_id"] or flt["problem_id"]):
+    if flt and (flt["username"] or flt["problem_id"]):
         params = {k: v for k, v in flt.items() if v}
         s, b = api_client.request("GET", "/api/submissions/", params=params)
         if s == 200:
@@ -219,7 +219,7 @@ def _profile_admin_panel(user) -> None:
                     frows.append({
                         i18n.t("solve.col_id"): it["submission_id"][:10],
                         i18n.t("solve.col_problem"): problems_map.get(it.get("problem_id"), it.get("problem_id")),
-                        i18n.t("solve.col_user"): it.get("user_id", "-"),
+                        i18n.t("solve.col_user"): it.get("username") or it.get("user_id") or "-",
                         i18n.t("solve.col_status"): it.get("status", "-"),
                         i18n.t("solve.col_score"): it.get("score", "-"),
                         i18n.t("solve.col_total"): it.get("counts", "-"),

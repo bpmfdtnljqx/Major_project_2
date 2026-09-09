@@ -89,18 +89,30 @@ async def get_submission(request: Request, submission_id: str, current: dict = D
 async def list_submissions(
     request: Request,
     user_id: str | None = None,
+    username: str | None = None,
     problem_id: str | None = None,
     status: str | None = None,
     page: int | None = None,
     page_size: int | None = None,
     current: dict = Depends(get_current_user),
 ):
-    """查询评测列表（Step 3，本人或管理员）。"""
+    """查询评测列表（Step 3，本人或管理员）。
+
+    支持按 user_id 或 username 过滤（admin 视角下也常按用户名筛）；
+    username 会先在 user_store 里查 user_id 再走原路径。
+    """
     # 权限：普通用户只能查自己的提交
     if current["role"] != "admin":
         if user_id is not None and user_id != current["user_id"]:
             raise AppError(403, "permission denied")
         user_id = current["user_id"]
+        username = None  # 普通用户不接受 username 过滤
+    # username → user_id 解析
+    if username is not None and username.strip():
+        u = request.app.state.user_store.get_by_username(username.strip())
+        if u is None:
+            raise AppError(404, "user not found")
+        user_id = u["user_id"]
     # 一级条件不可同时为空
     if user_id is None and problem_id is None:
         raise AppError(400, "user_id or problem_id required")
@@ -113,11 +125,22 @@ async def list_submissions(
     store = request.app.state.submission_store
     total, submissions = store.list(user_id, problem_id, status, page, page_size)
 
+    # 一次性批量查 user_id → username（admin 视图下表格能直接显示人名）
+    user_ids = {s["user_id"] for s in submissions if s.get("user_id")}
+    user_name: dict[str, str] = {}
+    for uid in user_ids:
+        u = request.app.state.user_store.get_by_id(uid)
+        if u:
+            user_name[uid] = u["username"]
+
     items = []
     for s in submissions:
+        uname = user_name.get(s["user_id"], s["user_id"]) if s.get("user_id") else "-"
         if s["status"] in ("error", "pending"):
             items.append({
                 "submission_id": s["submission_id"],
+                "user_id": s["user_id"],
+                "username": uname,
                 "problem_id": s["problem_id"],
                 "language": s["language"],
                 "status": s["status"],
@@ -125,6 +148,8 @@ async def list_submissions(
         else:
             items.append({
                 "submission_id": s["submission_id"],
+                "user_id": s["user_id"],
+                "username": uname,
                 "problem_id": s["problem_id"],
                 "language": s["language"],
                 "status": s["status"],
