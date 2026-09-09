@@ -23,6 +23,13 @@ REAL_API_KEY = os.getenv("AI_API_KEY", "")  # 你的 API Key
 REAL_BASE_URL = os.getenv("AI_BASE_URL", "https://api.openai.com/v1")  # OpenAI 兼容地址
 REAL_MODEL = os.getenv("AI_MODEL", "gpt-4o-mini")  # 模型名称
 
+# 默认计价（R4 Token 费用统计）：未在界面/DB 配置价格时使用
+# DeepSeek V4 Flash 官方价（人民币/百万 tokens，空闲时段）：输入 1.5、输出 4.5
+DEFAULT_INPUT_PRICE = float(os.getenv("AI_INPUT_PRICE", "1.5"))
+DEFAULT_OUTPUT_PRICE = float(os.getenv("AI_OUTPUT_PRICE", "4.5"))
+DEFAULT_PRICE_UNIT = int(os.getenv("AI_PRICE_UNIT", "1000000"))  # 1M tokens
+DEFAULT_CURRENCY = os.getenv("AI_CURRENCY", "CNY")  # 人民币
+
 # 生成题目的 prompt：system 强调出题质量，user 承载具体需求
 _SYSTEM_PROMPT = """你是一位资深的算法竞赛命题专家，负责为在线评测系统（OJ）设计高质量编程题。
 你需要独立完成题目设计、题目配置生成与测试点生成的全部环节，并严格只输出一个 JSON 对象（不要输出任何 JSON 以外的文字、解释或代码块标记）。
@@ -103,21 +110,22 @@ def _real_generate(requirement: str, config: dict) -> tuple[dict, dict]:
         content = content[start : end + 1]
     problem = json.loads(content)
 
-    # Token 用量与费用计算
+    # Token 用量与费用计算（R4）：价格取 config > 默认 DeepSeek 价
     u = data.get("usage", {})
     input_tokens = u.get("prompt_tokens", 0) or 0
     output_tokens = u.get("completion_tokens", 0) or 0
     total_tokens = u.get("total_tokens", input_tokens + output_tokens) or 0
-    price_unit = config.get("price_unit") or 1000000
-    input_price = config.get("input_price") or 0.0
-    output_price = config.get("output_price") or 0.0
+    price_unit = config.get("price_unit") or DEFAULT_PRICE_UNIT
+    input_price = config.get("input_price") if config.get("input_price") is not None else DEFAULT_INPUT_PRICE
+    output_price = config.get("output_price") if config.get("output_price") is not None else DEFAULT_OUTPUT_PRICE
     cost = round(input_tokens / price_unit * input_price + output_tokens / price_unit * output_price, 6)
     usage = {
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
         "total_tokens": total_tokens,
         "cost": cost,
-        "currency": "USD",
+        "currency": DEFAULT_CURRENCY,
+        "price_unit": price_unit,
     }
     return problem, usage
 
