@@ -152,19 +152,23 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
    真实 testid：stTextInputField / stNumberInputField / stNumberInputStepUp/Down /
    stSelectbox / stCheckbox / stTextArea。用 testid + 后代选择器精准覆盖。 */
 
-/* text input 真正输入框 */
-[data-testid="stTextInputField"],
-[data-testid="stTextInput"] input,
-.stTextInput input {{
+/* text input 外层容器（带 secondaryBg 背景，需设主题色） */
+[data-testid="stTextInputRootElement"],
+[data-testid="stTextInput"] {{
     background: {p['input_bg']} !important;
     border: 1px solid {p['border_hi']} !important;
     border-radius: 9px !important;
+}}
+/* 真正 input 元素（保持 transparent，让外层 input_bg 透出来） */
+[data-testid="stTextInputField"],
+[data-testid="stTextInput"] input,
+.stTextInput input {{
+    background: transparent !important;
+    border: none !important;
     color: {p['text']} !important;
     -webkit-text-fill-color: {p['text']} !important;
     box-shadow: none !important;
 }}
-/* text input 根元素（包裹层，透明避免深色漏出） */
-[data-testid="stTextInputRootElement"] {{ background: transparent !important; }}
 /* 密码框 reveal 按钮（stTextInput 内部 button） */
 [data-testid="stTextInput"] button {{
     background: transparent !important;
@@ -172,13 +176,18 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     box-shadow: none !important; border: none !important;
 }}
 [data-testid="stTextInput"] button:hover {{ color: {p['accent']} !important; }}
-/* number input 输入框 */
-[data-testid="stNumberInputField"],
-[data-testid="stNumberInput"] input,
-.stNumberInput input {{
+/* number input 外层容器 */
+[data-testid="stNumberInput"] {{
     background: {p['input_bg']} !important;
     border: 1px solid {p['border_hi']} !important;
     border-radius: 9px !important;
+}}
+/* number input 真正 input 元素 */
+[data-testid="stNumberInputField"],
+[data-testid="stNumberInput"] input,
+.stNumberInput input {{
+    background: transparent !important;
+    border: none !important;
     color: {p['text']} !important;
     -webkit-text-fill-color: {p['text']} !important;
     box-shadow: none !important;
@@ -196,18 +205,20 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     color: {p['accent']} !important;
     background: {p['accent_soft']} !important;
 }}
-/* selectbox 容器 + 内部文字 */
+/* selectbox 容器 + 所有内部元素（除 dropdown 面板）—— secondaryBg 深色漏出的根因在这里
+   stSelectbox 是最外层 testid，但带 secondaryBg 的 div 在 Tooltip/Combobox 内部（target e1fp86qc0），
+   用 * 通配排除 dropdown 即可 */
 [data-testid="stSelectbox"] {{ background: {p['input_bg']} !important; }}
-[data-testid="stSelectbox"] > div {{
-    background: {p['input_bg']} !important;
-    border: 1px solid {p['border_hi']} !important;
-    border-radius: 9px !important;
-    color: {p['text']} !important;
-    box-shadow: none !important;
-}}
-[data-testid="stSelectbox"] * {{
+[data-testid="stSelectbox"] *:not([data-testid="stSelectboxVirtualDropdown"]):not([data-testid="stSelectboxVirtualDropdown"] *) {{
+    background-color: {p['input_bg']} !important;
     color: {p['text']} !important;
     -webkit-text-fill-color: {p['text']} !important;
+}}
+/* selectbox 内部 border（最深的容器 e1fp86qc0 的 borderColor） */
+[data-testid="stSelectbox"] > div > div,
+[data-testid="stSelectbox"] > div > div > div {{
+    border: 1px solid {p['border_hi']} !important;
+    border-radius: 9px !important;
 }}
 /* text area */
 [data-testid="stTextArea"] textarea,
@@ -259,15 +270,17 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     transition: all .15s ease;
 }}
 .stButton > button:hover {{ border-color: {p['accent']} !important; color: {p['accent']} !important; }}
-[data-testid="stBaseButton-primary"], button[kind="primary"] {{
+[data-testid="stBaseButton-primary"], button[kind="primary"],
+[data-testid="stFormSubmitButton"] button {{
     background: linear-gradient(180deg, {p['accent']}, {p['accent_dim']}) !important;
     color: #fff !important;
     border: none !important; font-weight: 650;
     border-radius: 9px !important;
     box-shadow: 0 1px 2px rgba(0,0,0,.2);
 }}
-[data-testid="stBaseButton-primary"]:hover, button[kind="primary"]:hover {{
-    filter: brightness(1.07);
+[data-testid="stBaseButton-primary"]:hover, button[kind="primary"]:hover,
+[data-testid="stFormSubmitButton"] button:hover {{
+    filter: brightness(1.07); color: #fff !important;
 }}
 
 /* ============ stButtonGroup（pills + segmented_control 共用，Streamlit 1.63 真实 testid） ============ */
@@ -345,19 +358,20 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     border-radius: 10px !important;
 }}
 [data-testid="stCodeBlock"] code, .stCodeBlock code {{ color: {p['text']} !important; }}
-/* streamlit-ace 代码编辑器：让 iframe 容器+iframe 自身都跟主题走
-   （亮色下也要有明确浅底色，不要下方露出 baseweb panel 的深色） */
+/* streamlit-ace 代码编辑器：
+   - 强制 color-scheme: light，避免用户系统是 dark mode 时 ace 滚动条/cursor 用 dark
+   - 强制 input_bg 背景，避免下方露出 baseweb panel 的深色 */
 iframe[title*="streamlit_ace"] {{
     border: 1px solid {p['border_hi']} !important;
     border-radius: 10px !important;
     min-height: 360px !important;
     background: {p['input_bg']} !important;
-    color-scheme: light dark;
+    color-scheme: light !important;
     display: block !important;
 }}
 /* streamlit-ace 外层 div：靠属性匹配透明化 */
 div:has(> iframe[title*="streamlit_ace"]) {{
-    background: transparent !important;
+    background: {p['input_bg']} !important;
     padding: 0 !important;
 }}
 
