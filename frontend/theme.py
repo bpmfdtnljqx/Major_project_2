@@ -80,12 +80,13 @@ def inject() -> None:
    用 font-feature-settings: 'liga' 渲染 ligature，字体名不匹配会直接 fallback 成纯文字。*/
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded&display=block');
 
-/* ============ 隐藏 Streamlit 原生工具栏 / 装饰 / 页脚 / 侧边栏折叠按钮 ============ */
+/* ============ 隐藏 Streamlit 原生工具栏 / 装饰 / 页脚 ============ */
+/* stExpandSidebarButton 不再隐藏：让它用 Material Symbols Rounded 后图标正常显示，
+   侧边栏折叠/展开能正常用。 */
 [data-testid="stToolbar"] {{ display: none !important; }}
 [data-testid="stDecoration"] {{ display: none !important; }}
 #MainMenu {{ display: none !important; }}
 footer {{ display: none !important; }}
-[data-testid="stExpandSidebarButton"] {{ display: none !important; }}
 header[data-testid="stHeader"] {{ background: transparent !important; }}
 
 /* ============ 全局 Material Symbols Rounded 字体（让密码 reveal、expander 箭头等图标正常） ============
@@ -170,6 +171,53 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
    没有 SingleValue/ValueContainer 字面类名，靠 * 强制覆盖。Popover 不在此选择器内所以下拉项不受影响） */
 [data-baseweb="select"] > div > div * {{
     background: transparent !important;
+    color: {p['text']} !important;
+    -webkit-text-fill-color: {p['text']} !important;
+}}
+
+/* ============ baseweb 输入控件：所有内部 element 强制主题色（终极覆盖） ============
+   streamlit config.toml base=dark 让 baseweb 也走 dark 主题。我们用 CSS 强制把
+   关键内部 element（input 文字、number_input +/- 按钮、checkbox 方块）调成主题色。 */
+/* Input 内部所有文字颜色（排除 button/role=button，下条单独处理） */
+[data-baseweb="input"] *:not([role="button"]):not(button) {{
+    color: {p['text']} !important;
+    -webkit-text-fill-color: {p['text']} !important;
+    background: transparent !important;
+}}
+/* Number input +/- 按钮 */
+[data-baseweb="input"] button,
+[data-baseweb="input"] [role="button"] {{
+    background: {p['surface_hi']} !important;
+    color: {p['dim']} !important;
+    border-color: {p['border']} !important;
+    box-shadow: none !important;
+}}
+[data-baseweb="input"] button:hover,
+[data-baseweb="input"] [role="button"]:hover {{
+    color: {p['accent']} !important;
+    background: {p['accent_soft']} !important;
+}}
+/* Checkbox 方块：内部 div 强制浅底+深边框 */
+[data-baseweb="checkbox"] {{
+    background: transparent !important;
+}}
+[data-baseweb="checkbox"] > div {{
+    background: {p['input_bg']} !important;
+    border: 1.5px solid {p['border_hi']} !important;
+    border-radius: 4px !important;
+}}
+[data-baseweb="checkbox"][aria-checked="true"] > div,
+[data-baseweb="checkbox"] input:checked + div {{
+    background: {p['accent']} !important;
+    border-color: {p['accent']} !important;
+}}
+/* Toggle / Radio 内部 */
+[data-baseweb="radio"] > div {{
+    background: {p['input_bg']} !important;
+    border-color: {p['border_hi']} !important;
+}}
+/* Textarea 内部 */
+[data-baseweb="textarea"] * {{
     color: {p['text']} !important;
     -webkit-text-fill-color: {p['text']} !important;
 }}
@@ -291,17 +339,20 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     border-radius: 10px !important;
 }}
 [data-testid="stCodeBlock"] code, .stCodeBlock code {{ color: {p['text']} !important; }}
-/* streamlit-ace 代码编辑器：明确容器+iframe 背景与边框，避免下半截露出 Streamlit 默认深色 */
+/* streamlit-ace 代码编辑器：让 iframe 容器+iframe 自身都跟主题走
+   （亮色下也要有明确浅底色，不要下方露出 baseweb panel 的深色） */
 iframe[title*="streamlit_ace"] {{
     border: 1px solid {p['border_hi']} !important;
     border-radius: 10px !important;
-    min-height: 340px !important;
+    min-height: 360px !important;
     background: {p['input_bg']} !important;
     color-scheme: light dark;
+    display: block !important;
 }}
-/* streamlit-ace 外层 div（没有 testid，靠属性匹配） */
+/* streamlit-ace 外层 div：靠属性匹配透明化 */
 div:has(> iframe[title*="streamlit_ace"]) {{
     background: transparent !important;
+    padding: 0 !important;
 }}
 
 /* ============ Form 容器 ============ */
@@ -324,10 +375,26 @@ div:has(> iframe[title*="streamlit_ace"]) {{
     border: 1px solid {p['border']}; border-radius: 12px; overflow: hidden;
     background: {p['surface']};
 }}
-[data-testid="stDataFrame"] thead th {{
-    background: {p['surface_hi']} !important; color: {p['dim']} !important;
+/* Dataframe 表头：所有 cell 强制主题色 */
+[data-testid="stDataFrame"] thead,
+[data-testid="stDataFrame"] thead tr,
+[data-testid="stDataFrame"] thead th,
+[data-testid="stDataFrame"] thead [class*="headerCell"],
+[data-testid="stDataFrame"] [class*="HeaderCell"],
+[data-testid="stDataFrame"] [class*="GlideDataFrame"] [class*="header"] {{
+    background: {p['surface_hi']} !important;
+    color: {p['dim']} !important;
 }}
-[data-testid="stDataFrame"] tbody tr:nth-child(even) {{ background: {p['surface_hi']}22; }}
+/* Dataframe body cell */
+[data-testid="stDataFrame"] tbody tr td,
+[data-testid="stDataFrame"] tbody [class*="cell"] {{
+    background: {p['surface']} !important;
+    color: {p['text']} !important;
+}}
+[data-testid="stDataFrame"] tbody tr:nth-child(even) td,
+[data-testid="stDataFrame"] tbody tr:nth-child(even) [class*="cell"] {{
+    background: {p['surface_hi']} !important;
+}}
 
 /* ============ 侧边栏（干净，不黑块） ============ */
 section[data-testid="stSidebar"], [data-testid="stSidebar"] {{
