@@ -364,19 +364,15 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
 [data-testid="stCodeBlock"] code, .stCodeBlock code {{ color: {p['text']} !important; }}
 /* streamlit-ace 代码编辑器：
    - 强制 color-scheme: light，避免用户系统是 dark mode 时 ace 滚动条/cursor 用 dark
-   - 强制 input_bg 背景，避免下方露出 baseweb panel 的深色 */
-iframe[title*="streamlit_ace"] {{
+   - 强制 input_bg 背景 + 主题色边框（标题可能带前缀，用 * 匹配） */
+iframe[title*="streamlit_ace"],
+iframe[title*="st.streamlit_ace"] {{
     border: 1px solid {p['border_hi']} !important;
     border-radius: 10px !important;
-    min-height: 360px !important;
     background: {p['input_bg']} !important;
     color-scheme: light !important;
     display: block !important;
-}}
-/* streamlit-ace 外层 div：靠属性匹配透明化 */
-div:has(> iframe[title*="streamlit_ace"]) {{
-    background: {p['input_bg']} !important;
-    padding: 0 !important;
+    box-shadow: none !important;
 }}
 
 /* ============ Form 容器 ============ */
