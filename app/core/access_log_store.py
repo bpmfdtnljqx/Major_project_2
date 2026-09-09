@@ -99,3 +99,12 @@ class AccessLogStore:
             conn.commit()
         finally:
             conn.close()
+
+    def delete_by_user(self, user_id: str) -> None:
+        """删除某用户的全部访问审计记录（删除用户时级联清理）。"""
+        conn = self._connect()
+        try:
+            conn.execute("DELETE FROM access_logs WHERE user_id = ?", (user_id,))
+            conn.commit()
+        finally:
+            conn.close()

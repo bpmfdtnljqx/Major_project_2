@@ -115,6 +115,31 @@ async def get_user(request: Request, user_id: str, current: dict = Depends(get_c
     })
 
 
+@router.delete("/users/{user_id}")
+async def delete_user(request: Request, user_id: str, current: dict = Depends(get_admin)):
+    """删除用户（仅管理员，初始管理员不可删，级联清理提交/日志/session）。
+
+    防护：admin 不可删除其他 admin，也不可删除自己。
+    """
+    if user_id == current["user_id"]:
+        raise AppError(403, "cannot delete own account")
+    target = request.app.state.user_store.get_by_id(user_id)
+    if target is None:
+        raise AppError(404, "user not found")
+    # 不可删除其他 admin
+    if target["role"] == "admin":
+        raise AppError(403, "cannot delete other admin")
+    # user_store.delete 内部对内置 admin (user_id='1') 返回 False，double-check
+    ok_flag = request.app.state.user_store.delete(user_id)
+    if not ok_flag:
+        raise AppError(403, "cannot delete built-in admin")
+    # 级联清理
+    request.app.state.user_store.delete_sessions_of_user(user_id)
+    request.app.state.submission_store.delete_by_user(user_id)
+    request.app.state.access_log_store.delete_by_user(user_id)
+    return ok(data={"user_id": user_id}, msg="user deleted")
+
+
 @router.put("/users/{user_id}/role")
 async def update_role(
     request: Request, user_id: str, body: RoleUpdate, current: dict = Depends(get_admin)

@@ -144,6 +144,18 @@ class UserStore:
         finally:
             conn.close()
 
+    def delete(self, user_id: str) -> bool:
+        """按 user_id 删除用户。初始管理员（user_id='1'）拒绝删除。"""
+        if user_id == "1":
+            return False
+        conn = self._connect()
+        try:
+            cur = conn.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+            conn.commit()
+            return cur.rowcount > 0
+        finally:
+            conn.close()
+
     def list_users(self, page=None, page_size=None) -> tuple[int, list[dict]]:
         """分页查询用户列表（含统计）。"""
         conn = self._connect()
@@ -183,6 +195,15 @@ class UserStore:
         conn = self._connect()
         try:
             conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def delete_sessions_of_user(self, user_id: str) -> None:
+        """删除某用户的所有 session（删用户时连带清登录态）。"""
+        conn = self._connect()
+        try:
+            conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
             conn.commit()
         finally:
             conn.close()

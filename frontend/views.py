@@ -128,7 +128,7 @@ def _profile_admin_panel(user) -> None:
         for u in data["users"]:
             with st.expander(f"{u['username']}　（{u['role']}）"):
                 st.caption(f"user_id：{u['user_id']}　·　{u['join_time']}")
-                c1, c2, c3 = st.columns([2, 1, 1])
+                c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
                 with c1:
                     new_role = st.selectbox(
                         i18n.t("user.role"), roles,
@@ -147,6 +147,19 @@ def _profile_admin_panel(user) -> None:
                             st.rerun()
                         else:
                             st.error(b2.get("msg", i18n.t("error_occurred")))
+                with c4:
+                    # admin 不可删（前端也不显示按钮，后端还会再校验）
+                    if u["role"] != "admin":
+                        if st.button(i18n.t("user.delete_btn"), key=f"del_{u['user_id']}",
+                                    type="secondary"):
+                            s2, b2 = api_client.request(
+                                "DELETE", f"/api/users/{u['user_id']}"
+                            )
+                            if s2 == 200:
+                                st.success(i18n.t("user.user_deleted"))
+                                st.rerun()
+                            else:
+                                st.error(b2.get("msg", i18n.t("error_occurred")))
     else:
         st.error(body.get("msg", i18n.t("error_occurred")))
 
@@ -224,7 +237,7 @@ def _profile_admin_panel(user) -> None:
                         i18n.t("solve.col_score"): it.get("score", "-"),
                         i18n.t("solve.col_total"): it.get("counts", "-"),
                     })
-                st.table(frows)
+                st.dataframe(frows, height=400, hide_index=True, use_container_width=True)
             else:
                 st.info(i18n.t("solve.records_none"))
         else:
@@ -508,7 +521,7 @@ def render_solve():
             i18n.t("solve.col_score"): s.get("score", "-"),
             i18n.t("solve.col_total"): s.get("counts", "-"),
         })
-    st.table(rows)
+    st.dataframe(rows, height=400, hide_index=True, use_container_width=True)
     sub_ids = [s["submission_id"] for s in subs]
     sel_short = st.selectbox(i18n.t("solve.select_sub"), [x[:10] for x in sub_ids],
                              key="sub_select")

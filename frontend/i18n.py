@@ -71,6 +71,8 @@ _STRINGS = {
     "user.total": {"zh": "共 {n} 个用户", "en": "{n} users"},
     "user.update_role": {"zh": "更新角色", "en": "Update role"},
     "user.role_updated": {"zh": "已更新", "en": "Updated"},
+    "user.delete_btn": {"zh": "删除用户", "en": "Delete user"},
+    "user.user_deleted": {"zh": "已删除", "en": "Deleted"},
     "user.create_admin": {"zh": "创建管理员", "en": "Create Admin"},
     "user.create_btn": {"zh": "创建", "en": "Create"},
     "user.create_ok": {"zh": "创建成功", "en": "Created"},
