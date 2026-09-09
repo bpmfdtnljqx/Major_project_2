@@ -5,6 +5,7 @@
 权限判断全在后端，前端仅做展示与交互封装。
 """
 
+import html as _html
 import json
 
 import streamlit as st
@@ -50,11 +51,12 @@ def _problem_meta(d: dict) -> None:
 
 
 def _esc(s) -> str:
-    import html as _h
-    return _h.escape(str(s))
+    """HTML 转义，防止题目内容注入标签。"""
+    return _html.escape(str(s))
 
 
 def _diff_lvl(d) -> int:
+    """把难度文本归一化为等级 0~3（0=未知/1=入门/2=中等/3=困难），供 CSS 徽章配色。"""
     low = (d or "").lower()
     return (3 if any(x in low for x in ["困难", "hard", "高级", "advanced", "较难"]) else
             2 if any(x in low for x in ["中等", "medium"]) else
@@ -86,6 +88,7 @@ def _problem_statement(d: dict) -> None:
 
 # ================= 用户 / 我的 =================
 def render_profile():
+    """「我的」页：本人统计卡片 + 管理员面板（用户管理 / 提交记录查询 / 系统重置）。"""
     if not _require_login():
         return
     user = api_client.current_user()
@@ -247,6 +250,7 @@ def _profile_admin_panel(user) -> None:
 
 # ================= 题目（浏览 + 管理） =================
 def render_problems():
+    """「题目」页：浏览列表 + 详情卡片；admin 可新增/编辑/删除题目。"""
     if not _require_login():
         return
     user = api_client.current_user()
@@ -399,6 +403,7 @@ def render_problems():
 
 # ================= 做题 =================
 def render_solve():
+    """「做题」页：左题面 + 右编辑器，支持文件上传与提交；下方本人提交记录。"""
     if not _require_login():
         return
     user = api_client.current_user()
@@ -564,6 +569,7 @@ def render_solve():
 
 # ================= AI =================
 def render_ai():
+    """「AI 命题」页（仅 admin）：模型配置 + 提交需求生成题目 + 任务状态/中断/清除记录。"""
     if not _require_login():
         return
     if api_client.current_user()["role"] != "admin":

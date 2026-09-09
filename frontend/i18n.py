@@ -229,6 +229,7 @@ def get_lang() -> str:
 
 
 def set_lang(lang: str) -> None:
+    """设置当前语言（非法值回退到中文）。"""
     st.session_state["lang"] = lang if lang in LANG_LABELS else "zh"
 
 

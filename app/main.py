@@ -28,6 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def create_app() -> FastAPI:
+    """构建 FastAPI 应用：初始化各存储层、挂载路由、注册统一异常处理器。"""
     app = FastAPI(title="OJ System")
 
     # 初始化题目存储：problems/ 为空时从 seed/ 播种

@@ -48,6 +48,7 @@ LIGHT = dict(
 
 
 def _mode() -> str:
+    """当前主题（"dark" / "light"），默认 dark。"""
     return st.session_state.get("ui_theme", "dark")
 
 
@@ -57,10 +58,12 @@ def current_mode() -> str:
 
 
 def _pal() -> dict:
+    """返回当前主题对应的调色板字典（DARK 或 LIGHT）。"""
     return LIGHT if _mode() == "light" else DARK
 
 
 def toggle() -> None:
+    """切换主题（dark ↔ light）。"""
     st.session_state["ui_theme"] = "light" if _mode() == "dark" else "dark"
 
 
@@ -71,6 +74,7 @@ def mode_label() -> str:
 
 # ============================ CSS 注入 ============================
 def inject() -> None:
+    """注入全局设计系统 CSS（含 Material Symbols 字体、调色板、各组件覆盖）。"""
     p = _pal()
     # f-string 里 CSS 的花括号需写 {{ }}；颜色占位用 {p['...']}
     css = f"""
@@ -596,6 +600,7 @@ def topbar_brand(name: str, mark: str = "OJ", sub: str = "") -> None:
 
 
 def hero(title: str, subtitle: str = "", chip: str = "") -> None:
+    """页面 hero 标题区（可选小标签 + 大标题 + 副标题）。"""
     chip_html = f'<span class="hero-chip">{html.escape(chip)}</span>' if chip else ""
     st.markdown(
         f'<div class="hero">{chip_html}'
@@ -623,6 +628,7 @@ def brand_panel(title: str, sub: str, feats: list) -> None:
 
 
 def stat_cards(items: list) -> None:
+    """渲染一行统计卡片（label / value / hint）。"""
     n = max(len(items), 1)
     cols = st.columns(n)
     for i, col in enumerate(cols):
@@ -639,10 +645,12 @@ def stat_cards(items: list) -> None:
 
 
 def section(title: str) -> None:
+    """渲染区块标题（左侧琥珀竖线 + 标题文字）。"""
     st.markdown(f'<div class="sec-title">{html.escape(title)}</div>', unsafe_allow_html=True)
 
 
 def difficulty(d) -> None:
+    """渲染难度徽章（把难度文本映射到 diff-0~3 配色）。"""
     d = (d or "").strip()
     if not d:
         return
@@ -654,6 +662,7 @@ def difficulty(d) -> None:
 
 
 def chip(text: str) -> str:
+    """返回一个标签 chip 的 HTML（供元信息区拼接）。"""
     return f'<span class="chip">{html.escape(text)}</span>'
 
 
@@ -666,6 +675,7 @@ _STATUS = {
 
 
 def status_badge(s) -> str:
+    """返回评测状态徽章 HTML（把状态文本映射到 badge-* 配色）。"""
     k = str(s or "").lower()
     return f'<span class="badge badge-{_STATUS.get(k, "info")}">{html.escape(str(s))}</span>'
 
