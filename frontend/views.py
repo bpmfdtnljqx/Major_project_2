@@ -238,7 +238,7 @@ def _profile_admin_panel(user) -> None:
                         i18n.t("solve.col_total"): it.get("counts", "-"),
                     })
                 with st.container(height=400):
-                    st.dataframe(frows, hide_index=True, use_container_width=True)
+                    st.table(frows)
             else:
                 st.info(i18n.t("solve.records_none"))
         else:
@@ -523,7 +523,7 @@ def render_solve():
             i18n.t("solve.col_total"): s.get("counts", "-"),
         })
     with st.container(height=400):
-        st.dataframe(rows, hide_index=True, use_container_width=True)
+        st.table(rows)
     sub_ids = [s["submission_id"] for s in subs]
     sel_short = st.selectbox(i18n.t("solve.select_sub"), [x[:10] for x in sub_ids],
                              key="sub_select")
