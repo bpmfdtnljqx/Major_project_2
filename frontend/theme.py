@@ -75,19 +75,27 @@ def inject() -> None:
     # f-string 里 CSS 的花括号需写 {{ }}；颜色占位用 {p['...']}
     css = f"""
 <style id="wb-theme">
-/* ============ 关键：先加载 Material Symbols Rounded 字体（Streamlit 1.63 iconFont 默认名） ============
-   注意：必须是 'Material Symbols Rounded'，不能是 'Material Icons'。Streamlit 的 DynamicIcon 组件
-   用 font-feature-settings: 'liga' 渲染 ligature，字体名不匹配会直接 fallback 成纯文字。*/
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded&display=block');
 
-/* ============ 隐藏 Streamlit 原生工具栏 / 装饰 / 页脚 ============ */
-/* stExpandSidebarButton 不再隐藏：让它用 Material Symbols Rounded 后图标正常显示，
-   侧边栏折叠/展开能正常用。 */
-[data-testid="stToolbar"] {{ display: none !important; }}
+/* ============ 关键说明 ============
+   1. 必须加载 'Material Symbols Rounded'（Streamlit 1.63 iconFont 默认名），不能用 'Material Icons'。
+      DynamicIcon 用 font-feature-settings:'liga' 渲染 ligature，字体名不匹配会 fallback 成纯文字。
+   2. 不要隐藏整个 stToolbar！它包含侧栏折叠(stSidebarCollapseButton)/展开(stExpandSidebarButton)按钮。
+      只隐藏 Deploy 按钮(stAppDeployButton)。 */
+[data-testid="stAppDeployButton"] {{ display: none !important; }}
 [data-testid="stDecoration"] {{ display: none !important; }}
 #MainMenu {{ display: none !important; }}
 footer {{ display: none !important; }}
 header[data-testid="stHeader"] {{ background: transparent !important; }}
+/* 侧栏折叠/展开按钮：保留，仅调整颜色，让侧栏能正常折叠和恢复 */
+[data-testid="stSidebarCollapseButton"] button,
+[data-testid="stExpandSidebarButton"] button {{
+    color: {p['dim']} !important;
+}}
+[data-testid="stSidebarCollapseButton"] button:hover,
+[data-testid="stExpandSidebarButton"] button:hover {{
+    color: {p['accent']} !important;
+}}
 
 /* ============ 全局 Material Symbols Rounded 字体（让密码 reveal、expander 箭头等图标正常） ============
    Streamlit 把图标渲染成 <span data-testid="stIconMaterial" translate="no">visibility</span>，
@@ -139,8 +147,15 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     font-weight: 600; font-size: .88rem !important;
 }}
 
-/* ============ 输入控件 ============ */
-.stTextInput input, .stTextArea textarea, .stNumberInput input {{
+/* ============ 输入控件（Streamlit 1.63 真实 testid，不再用 data-baseweb） ============
+   Streamlit 1.63 内部没有 data-baseweb 属性，input 框/+/−按钮等用 emotion hash class。
+   真实 testid：stTextInputField / stNumberInputField / stNumberInputStepUp/Down /
+   stSelectbox / stCheckbox / stTextArea。用 testid + 后代选择器精准覆盖。 */
+
+/* text input 真正输入框 */
+[data-testid="stTextInputField"],
+[data-testid="stTextInput"] input,
+.stTextInput input {{
     background: {p['input_bg']} !important;
     border: 1px solid {p['border_hi']} !important;
     border-radius: 9px !important;
@@ -148,100 +163,91 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     -webkit-text-fill-color: {p['text']} !important;
     box-shadow: none !important;
 }}
-[data-baseweb="input"], [data-baseweb="base-input"] {{
-    background: {p['input_bg']} !important;
-    border-color: {p['border_hi']} !important;
-    border-radius: 9px !important;
-}}
-[data-baseweb="input"] button {{   /* 密码框 reveal 按钮：透明，避免亮色下深色方块 */
+/* text input 根元素（包裹层，透明避免深色漏出） */
+[data-testid="stTextInputRootElement"] {{ background: transparent !important; }}
+/* 密码框 reveal 按钮（stTextInput 内部 button） */
+[data-testid="stTextInput"] button {{
     background: transparent !important;
     color: {p['dim']} !important;
     box-shadow: none !important; border: none !important;
 }}
-[data-baseweb="input"] button:hover {{ color: {p['accent']} !important; }}
-[data-baseweb="select"] > div,
-[data-baseweb="select"] > div > div {{
+[data-testid="stTextInput"] button:hover {{ color: {p['accent']} !important; }}
+/* number input 输入框 */
+[data-testid="stNumberInputField"],
+[data-testid="stNumberInput"] input,
+.stNumberInput input {{
+    background: {p['input_bg']} !important;
+    border: 1px solid {p['border_hi']} !important;
+    border-radius: 9px !important;
+    color: {p['text']} !important;
+    -webkit-text-fill-color: {p['text']} !important;
+    box-shadow: none !important;
+}}
+/* number input +/- 按钮（真实 testid：StepUp / StepDown） */
+[data-testid="stNumberInputStepUp"],
+[data-testid="stNumberInputStepDown"] {{
+    background: {p['surface_hi']} !important;
+    color: {p['dim']} !important;
+    border: 1px solid {p['border']} !important;
+    box-shadow: none !important;
+}}
+[data-testid="stNumberInputStepUp"]:hover,
+[data-testid="stNumberInputStepDown"]:hover {{
+    color: {p['accent']} !important;
+    background: {p['accent_soft']} !important;
+}}
+/* selectbox 容器 + 内部文字 */
+[data-testid="stSelectbox"] {{ background: {p['input_bg']} !important; }}
+[data-testid="stSelectbox"] > div {{
     background: {p['input_bg']} !important;
     border: 1px solid {p['border_hi']} !important;
     border-radius: 9px !important;
     color: {p['text']} !important;
     box-shadow: none !important;
 }}
-/* Selectbox 内部所有后代文字强制主题色（baseweb 用 emotion 生成的 hash class，
-   没有 SingleValue/ValueContainer 字面类名，靠 * 强制覆盖。Popover 不在此选择器内所以下拉项不受影响） */
-[data-baseweb="select"] > div > div * {{
-    background: transparent !important;
+[data-testid="stSelectbox"] * {{
     color: {p['text']} !important;
     -webkit-text-fill-color: {p['text']} !important;
 }}
-
-/* ============ baseweb 输入控件：所有内部 element 强制主题色（终极覆盖） ============
-   streamlit config.toml base=dark 让 baseweb 也走 dark 主题。我们用 CSS 强制把
-   关键内部 element（input 文字、number_input +/- 按钮、checkbox 方块）调成主题色。 */
-/* Input 内部所有文字颜色（排除 button/role=button，下条单独处理） */
-[data-baseweb="input"] *:not([role="button"]):not(button) {{
+/* text area */
+[data-testid="stTextArea"] textarea,
+.stTextArea textarea {{
+    background: {p['input_bg']} !important;
+    border: 1px solid {p['border_hi']} !important;
+    border-radius: 9px !important;
     color: {p['text']} !important;
     -webkit-text-fill-color: {p['text']} !important;
-    background: transparent !important;
-}}
-/* Number input +/- 按钮 */
-[data-baseweb="input"] button,
-[data-baseweb="input"] [role="button"] {{
-    background: {p['surface_hi']} !important;
-    color: {p['dim']} !important;
-    border-color: {p['border']} !important;
     box-shadow: none !important;
 }}
-[data-baseweb="input"] button:hover,
-[data-baseweb="input"] [role="button"]:hover {{
-    color: {p['accent']} !important;
-    background: {p['accent_soft']} !important;
-}}
-/* Checkbox 方块：内部 div 强制浅底+深边框 */
-[data-baseweb="checkbox"] {{
-    background: transparent !important;
-}}
-[data-baseweb="checkbox"] > div {{
+/* checkbox 方块（stCheckbox 内部 role=checkbox / input） */
+[data-testid="stCheckbox"] {{ background: transparent !important; }}
+[data-testid="stCheckbox"] [role="checkbox"],
+[data-testid="stCheckbox"] input[type="checkbox"] {{
     background: {p['input_bg']} !important;
     border: 1.5px solid {p['border_hi']} !important;
     border-radius: 4px !important;
 }}
-[data-baseweb="checkbox"][aria-checked="true"] > div,
-[data-baseweb="checkbox"] input:checked + div {{
-    background: {p['accent']} !important;
-    border-color: {p['accent']} !important;
-}}
-/* Toggle / Radio 内部 */
-[data-baseweb="radio"] > div {{
-    background: {p['input_bg']} !important;
-    border-color: {p['border_hi']} !important;
-}}
-/* Textarea 内部 */
-[data-baseweb="textarea"] * {{
-    color: {p['text']} !important;
-    -webkit-text-fill-color: {p['text']} !important;
-}}
-[data-baseweb="select"] [data-baseweb="select-value"],
-[data-baseweb="select"] [data-baseweb="select-value"] > div {{
-    color: {p['text']} !important;
-}}
-[data-baseweb="select"]:focus-within > div,
-[data-baseweb="select"]:hover > div,
-.stTextInput:focus-within, .stTextArea:focus-within, .stNumberInput:focus-within {{
-    border-color: {p['accent']} !important;
-    box-shadow: 0 0 0 2px {p['accent_soft']} !important;
-}}
+/* placeholder */
+[data-testid="stTextInputField"]::placeholder,
+[data-testid="stTextArea"] textarea::placeholder,
 .stTextInput input::placeholder, .stTextArea textarea::placeholder {{
     color: {p['faint']} !important;
     -webkit-text-fill-color: {p['faint']} !important;
 }}
-[data-baseweb="popover"] [role="listbox"] {{
+/* 聚焦状态 */
+[data-testid="stTextInputField"]:focus,
+[data-testid="stNumberInputField"]:focus,
+[data-testid="stTextArea"] textarea:focus {{
+    border-color: {p['accent']} !important;
+    box-shadow: 0 0 0 2px {p['accent_soft']} !important;
+}}
+/* selectbox 下拉展开的 popover */
+[data-testid="stSelectboxVirtualDropdown"] {{
     background: {p['surface']} !important;
     color: {p['text']} !important;
     border: 1px solid {p['border_hi']};
     border-radius: 10px !important;
 }}
-[data-baseweb="popover"] [role="option"] {{ color: {p['text']} !important; }}
 
 /* ============ 按钮 ============ */
 .stButton > button, .stFormSubmitButton > button,
@@ -370,29 +376,30 @@ div:has(> iframe[title*="streamlit_ace"]) {{
 [data-testid="stMetricLabel"] {{ color: {p['dim']}; }}
 [data-testid="stMetricValue"] {{ color: {p['text']}; font-weight: 720; }}
 
-/* ============ Dataframe 表格 ============ */
-[data-testid="stDataFrame"] {{
+/* ============ 表格（st.table 是 HTML table，可精准覆盖） ============ */
+[data-testid="stTable"] {{
     border: 1px solid {p['border']}; border-radius: 12px; overflow: hidden;
     background: {p['surface']};
 }}
-/* Dataframe 表头：所有 cell 强制主题色 */
-[data-testid="stDataFrame"] thead,
-[data-testid="stDataFrame"] thead tr,
-[data-testid="stDataFrame"] thead th,
-[data-testid="stDataFrame"] thead [class*="headerCell"],
-[data-testid="stDataFrame"] [class*="HeaderCell"],
-[data-testid="stDataFrame"] [class*="GlideDataFrame"] [class*="header"] {{
+[data-testid="stTable"] table {{
+    background: {p['surface']} !important;
+    border-collapse: collapse; width: 100%;
+}}
+[data-testid="stTable"] thead th,
+[data-testid="stTable"] thead tr th {{
     background: {p['surface_hi']} !important;
     color: {p['dim']} !important;
+    font-weight: 600;
+    border-bottom: 1px solid {p['border']} !important;
+    padding: .5rem .75rem;
 }}
-/* Dataframe body cell */
-[data-testid="stDataFrame"] tbody tr td,
-[data-testid="stDataFrame"] tbody [class*="cell"] {{
+[data-testid="stTable"] tbody tr td {{
     background: {p['surface']} !important;
     color: {p['text']} !important;
+    border-bottom: 1px solid {p['border']} !important;
+    padding: .45rem .75rem;
 }}
-[data-testid="stDataFrame"] tbody tr:nth-child(even) td,
-[data-testid="stDataFrame"] tbody tr:nth-child(even) [class*="cell"] {{
+[data-testid="stTable"] tbody tr:nth-child(even) td {{
     background: {p['surface_hi']} !important;
 }}
 

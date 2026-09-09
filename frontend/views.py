@@ -449,8 +449,7 @@ def render_solve():
             i18n.t("solve.col_score"): s.get("score", "-"),
             i18n.t("solve.col_total"): s.get("counts", "-"),
         })
-    st.dataframe(rows, use_container_width=True, hide_index=True)
-
+    st.table(rows)
     sub_ids = [s["submission_id"] for s in subs]
     sel_short = st.selectbox(i18n.t("solve.select_sub"), [x[:10] for x in sub_ids],
                              key="sub_select")
@@ -479,7 +478,7 @@ def render_solve():
                 i18n.t("solve.col_time"): det.get("time"),
                 i18n.t("solve.col_mem"): det.get("memory"),
             } for det in b3["data"]["details"]]
-            st.dataframe(det_rows, use_container_width=True, hide_index=True)
+            st.table(det_rows)
     if st.button(i18n.t("refresh")):
         st.rerun()
 
