@@ -157,6 +157,8 @@ _STRINGS = {
     "solve.col_mem": {"zh": "内存(MB)", "en": "Mem(MB)"},
     "solve.input_label": {"zh": "输入", "en": "Input"},
     "solve.output_label": {"zh": "输出", "en": "Output"},
+    "solve.upload_file": {"zh": "上传代码文件（可选）", "en": "Upload code file (optional)"},
+    "solve.upload_hint": {"zh": "支持 .py / .cpp / .c / .txt，上传后自动填入下方编辑器", "en": "Supports .py / .cpp / .c / .txt; auto-fills the editor below"},
 
     # ================= AI =================
     "ai.title": {"zh": "AI 智能命题", "en": "AI Problem Generation"},

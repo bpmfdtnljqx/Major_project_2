@@ -403,6 +403,19 @@ def render_solve():
                 font_size=14, tab_size=4, height=420, auto_update=True,
                 key=f"ace_{problem_id}_{ace_epoch}",
             )
+            # 上传代码文件：读入编辑器，再点「提交评测」即可提交
+            uploaded = st.file_uploader(
+                i18n.t("solve.upload_file"), type=["py", "cpp", "c", "cc", "txt"],
+                key=f"upload_{problem_id}",
+            )
+            if uploaded is not None:
+                content = uploaded.getvalue().decode("utf-8", errors="replace")
+                if st.session_state.get(f"draft_{problem_id}", "") != content:
+                    st.session_state[f"draft_{problem_id}"] = content
+                    st.session_state["ace_epoch"] = st.session_state.get("ace_epoch", 0) + 1
+                    st.rerun()
+            else:
+                st.caption(i18n.t("solve.upload_hint"))
             if st.button(i18n.t("solve.submit_btn"), type="primary", use_container_width=True):
                 if not code.strip():
                     st.error(i18n.t("solve.code_empty"))
