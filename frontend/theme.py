@@ -399,8 +399,12 @@ iframe[title*="st.streamlit_ace"] {{
     background: {p['surface']} !important;
     border-collapse: collapse; width: 100%;
 }}
+/* 表头固定（粘在容器顶部，不随 body 滚动） */
 [data-testid="stTable"] thead th,
 [data-testid="stTable"] thead tr th {{
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 2 !important;
     background: {p['surface_hi']} !important;
     color: {p['dim']} !important;
     font-weight: 600;
