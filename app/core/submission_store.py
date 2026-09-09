@@ -151,3 +151,12 @@ class SubmissionStore:
             conn.commit()
         finally:
             conn.close()
+
+    def delete_by_problem(self, problem_id: str) -> None:
+        """删除某道题目的全部提交记录（删除题目时级联清理）。"""
+        conn = self._connect()
+        try:
+            conn.execute("DELETE FROM submissions WHERE problem_id = ?", (problem_id,))
+            conn.commit()
+        finally:
+            conn.close()

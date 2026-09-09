@@ -15,7 +15,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Request
 
 from app.core.auth import get_admin, get_current_user
-from app.core.judge import judge
+from app.core.judge import DEFAULT_MEMORY_LIMIT, DEFAULT_TIME_LIMIT, judge
 from app.core.response import AppError, ok
 from app.models import SubmissionCreate
 
@@ -188,12 +188,23 @@ async def get_submission_log(request: Request, submission_id: str, current: dict
 
 
 async def _judge_task(submission_store, problem, language, code, submission_id):
-    """后台评测任务：运行 judge 并将结果回写存储。"""
+    """后台评测任务：运行 judge 并将结果回写存储。
+
+    时间/内存限制按「题目配置 → 语言配置 → 系统默认值」三级优先级确定
+    （与 FAQ 答疑一致，系统默认值为 3 秒 / 128 MB）。
+    """
+    time_limit = problem.time_limit
+    if time_limit is None:
+        time_limit = language.time_limit if language.time_limit is not None else DEFAULT_TIME_LIMIT
+    memory_limit = problem.memory_limit
+    if memory_limit is None:
+        memory_limit = language.memory_limit if language.memory_limit is not None else DEFAULT_MEMORY_LIMIT
+
     work_dir = JUDGE_DIR / submission_id
     try:
         compile_result, details = await asyncio.to_thread(
             judge, code, language, problem.testcases,
-            problem.time_limit, problem.memory_limit, work_dir,
+            time_limit, memory_limit, work_dir,
         )
         counts = len(problem.testcases) * 10
         score = sum(10 for d in details if d["result"] == "AC")

@@ -90,3 +90,12 @@ class AccessLogStore:
             conn.commit()
         finally:
             conn.close()
+
+    def delete_by_problem(self, problem_id: str) -> None:
+        """删除某道题目的全部访问审计记录（删除题目时级联清理）。"""
+        conn = self._connect()
+        try:
+            conn.execute("DELETE FROM access_logs WHERE problem_id = ?", (problem_id,))
+            conn.commit()
+        finally:
+            conn.close()

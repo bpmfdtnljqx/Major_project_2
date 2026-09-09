@@ -64,11 +64,18 @@ async def update_problem(request: Request, problem_id: str, problem: Problem, _:
 
 @router.delete("/problems/{problem_id}")
 async def delete_problem(request: Request, problem_id: str, _: dict = Depends(get_admin)):
-    """删除题目（仅管理员）。"""
+    """删除题目（仅管理员），并级联删除该题目的提交记录与访问审计日志。
+
+    测试点（testcases）随题目 JSON 一并删除；评测日志（judge_log）是提交记录的
+    details 字段，删除提交记录即一并删除。
+    """
     store = _store(request)
     if not store.exists(problem_id):
         raise AppError(404, "problem not found")
     store.delete(problem_id)
+    # 级联清理：提交记录（含评测日志 details）与访问审计日志
+    request.app.state.submission_store.delete_by_problem(problem_id)
+    request.app.state.access_log_store.delete_by_problem(problem_id)
     return ok(data={"id": problem_id}, msg="delete success")
 
 

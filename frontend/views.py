@@ -81,7 +81,7 @@ def _problem_statement(d: dict) -> None:
     if d.get("hint"):
         st.markdown(f"**{i18n.t('problem.hint')}**")
         st.markdown(d["hint"])
-    st.caption(i18n.t("problem.limit", t=d.get("time_limit", 3), m=d.get("memory_limit", 128)))
+    st.caption(i18n.t("problem.limit", t=d.get("time_limit") or 3, m=d.get("memory_limit") or 128))
 
 
 # ================= 用户 / 我的 =================
@@ -311,9 +311,9 @@ def render_problems():
                 testcases = st.text_area("Testcases (JSON)",
                                          value=json.dumps(d["testcases"], ensure_ascii=False))
                 time_limit = st.number_input(i18n.t("problem.time_limit"),
-                                             value=float(d["time_limit"]), step=0.5)
+                                             value=float(d.get("time_limit") or 3.0), step=0.5)
                 memory_limit = st.number_input(i18n.t("problem.memory_limit"),
-                                               value=int(d["memory_limit"]))
+                                               value=int(d.get("memory_limit") or 128))
                 public_cases = st.checkbox(i18n.t("problem.public_log_toggle"),
                                            value=bool(d.get("public_cases", False)))
                 if st.form_submit_button(i18n.t("problem.save_btn"), type="primary"):
