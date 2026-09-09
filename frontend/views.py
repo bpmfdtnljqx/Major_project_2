@@ -398,7 +398,7 @@ def render_solve():
             code = st_ace(
                 value=st.session_state.get(f"draft_{problem_id}", ""),
                 language=ace_mode, theme=ace_theme, keybinding="vscode",
-                font_size=14, tab_size=4, min_lines=14, auto_update=True,
+                font_size=14, tab_size=4, min_lines=16, max_lines=24, auto_update=True,
                 key=f"ace_{problem_id}",
             )
             if st.button(i18n.t("solve.submit_btn"), type="primary", use_container_width=True):

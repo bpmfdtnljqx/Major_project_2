@@ -176,13 +176,13 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     box-shadow: none !important; border: none !important;
 }}
 [data-testid="stTextInput"] button:hover {{ color: {p['accent']} !important; }}
-/* number input 外层容器 */
-[data-testid="stNumberInput"] {{
+/* number input 容器（stNumberInputContainer 带 secondaryBg，是真正显示的背景层） */
+[data-testid="stNumberInputContainer"] {{
     background: {p['input_bg']} !important;
     border: 1px solid {p['border_hi']} !important;
     border-radius: 9px !important;
 }}
-/* number input 真正 input 元素 */
+/* number input 真正 input 元素（transparent，让外层 background 透出） */
 [data-testid="stNumberInputField"],
 [data-testid="stNumberInput"] input,
 .stNumberInput input {{
@@ -252,12 +252,16 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
     border-color: {p['accent']} !important;
     box-shadow: 0 0 0 2px {p['accent_soft']} !important;
 }}
-/* selectbox 下拉展开的 popover */
+/* selectbox 下拉展开的 popover（dropdown 面板 + 所有选项文字） */
 [data-testid="stSelectboxVirtualDropdown"] {{
     background: {p['surface']} !important;
     color: {p['text']} !important;
     border: 1px solid {p['border_hi']};
     border-radius: 10px !important;
+}}
+[data-testid="stSelectboxVirtualDropdown"] * {{
+    color: {p['text']} !important;
+    -webkit-text-fill-color: {p['text']} !important;
 }}
 
 /* ============ 按钮 ============ */
