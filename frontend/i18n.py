@@ -148,6 +148,7 @@ _STRINGS = {
     "solve.col_status": {"zh": "状态", "en": "Status"},
     "solve.col_score": {"zh": "得分", "en": "Score"},
     "solve.col_total": {"zh": "总分", "en": "Full"},
+    "solve.col_user": {"zh": "用户", "en": "User"},
     "solve.select_sub": {"zh": "选择提交查看详情", "en": "Select a submission to view details"},
     "solve.compile": {"zh": "编译结果", "en": "Compile"},
     "solve.run": {"zh": "运行结果", "en": "Run"},
