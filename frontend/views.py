@@ -268,8 +268,8 @@ def render_problems():
             public_cases = st.checkbox(i18n.t("problem.public_log_toggle"))
         if st.form_submit_button(i18n.t("problem.add_btn"), type="primary"):
             try:
-                sj = json.loads(samples)
-                tj = json.loads(testcases)
+                sj = json.loads(samples) if samples.strip() else []
+                tj = json.loads(testcases) if testcases.strip() else []
             except json.JSONDecodeError:
                 st.error("JSON format error")
             else:
@@ -318,8 +318,8 @@ def render_problems():
                                            value=bool(d.get("public_cases", False)))
                 if st.form_submit_button(i18n.t("problem.save_btn"), type="primary"):
                     try:
-                        sj = json.loads(samples)
-                        tj = json.loads(testcases)
+                        sj = json.loads(samples) if samples.strip() else []
+                        tj = json.loads(testcases) if testcases.strip() else []
                     except json.JSONDecodeError:
                         st.error("JSON format error")
                     else:
@@ -504,6 +504,47 @@ def render_solve():
                 st.caption(i18n.t("solve.log_private"))
     if st.button(i18n.t("refresh")):
         st.rerun()
+
+    # ---- 提交记录查询（仅管理员，按 user_id / problem_id 筛选） ----
+    if user["role"] == "admin":
+        st.divider()
+        theme.section(i18n.t("solve.filter_title"))
+        with st.form("sub_filter"):
+            c1, c2 = st.columns(2)
+            with c1:
+                f_user = st.text_input(i18n.t("solve.filter_user"))
+            with c2:
+                f_problem = st.text_input(i18n.t("solve.filter_problem"))
+            if st.form_submit_button(i18n.t("solve.filter_btn"), type="primary"):
+                st.session_state["sub_filter"] = {
+                    "user_id": f_user.strip() or None,
+                    "problem_id": f_problem.strip() or None,
+                }
+                st.rerun()
+        flt = st.session_state.get("sub_filter")
+        if flt and (flt["user_id"] or flt["problem_id"]):
+            params = {k: v for k, v in flt.items() if v}
+            s, b = api_client.request("GET", "/api/submissions/", params=params)
+            if s == 200:
+                items = b["data"]["submissions"]
+                st.caption(i18n.t("solve.total", n=b["data"]["total"]))
+                if items:
+                    frows = []
+                    for it in items[:50]:
+                        pt = next((p["title"] for p in problems if p["id"] == it.get("problem_id")),
+                                  it.get("problem_id"))
+                        frows.append({
+                            i18n.t("solve.col_id"): it["submission_id"][:10],
+                            i18n.t("solve.col_problem"): pt,
+                            i18n.t("solve.col_status"): it.get("status", "-"),
+                            i18n.t("solve.col_score"): it.get("score", "-"),
+                            i18n.t("solve.col_total"): it.get("counts", "-"),
+                        })
+                    st.table(frows)
+                else:
+                    st.info(i18n.t("solve.records_none"))
+            else:
+                st.error(b.get("msg", i18n.t("error_occurred")))
 
 
 # ================= AI =================

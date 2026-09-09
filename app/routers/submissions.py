@@ -116,10 +116,17 @@ async def list_submissions(
     items = []
     for s in submissions:
         if s["status"] in ("error", "pending"):
-            items.append({"submission_id": s["submission_id"], "status": s["status"]})
+            items.append({
+                "submission_id": s["submission_id"],
+                "problem_id": s["problem_id"],
+                "language": s["language"],
+                "status": s["status"],
+            })
         else:
             items.append({
                 "submission_id": s["submission_id"],
+                "problem_id": s["problem_id"],
+                "language": s["language"],
                 "status": s["status"],
                 "score": s["score"],
                 "counts": s["counts"],

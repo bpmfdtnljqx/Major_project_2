@@ -20,11 +20,11 @@ class TestCase(BaseModel):
 class Problem(BaseModel):
     """题目完整数据模型。"""
 
-    # ---- 必填字段 ----
+    # ---- 必填字段：id + title（有标题才能成题） ----
     id: str = Field(..., description="题目唯一标识")
-    title: str = Field(..., description="题目标题")
+    title: str = Field(..., min_length=1, description="题目标题")
 
-    # ---- 软必填（API 可仅传 id+title，其余由系统默认 / 后续编辑补齐） ----
+    # ---- 软必填（可留空，由系统默认 / 后续编辑补齐） ----
     description: str = Field("", description="题目描述")
     input_description: str = Field("", description="输入格式说明")
     output_description: str = Field("", description="输出格式说明")
