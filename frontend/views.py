@@ -563,8 +563,20 @@ def render_solve():
             else:
                 # 没拿到 details：要么 public_cases 关（只能看总分），要么无权限
                 st.caption(i18n.t("solve.log_private"))
-    if st.button(i18n.t("refresh")):
-        st.rerun()
+    # 「刷新状态」+（admin 专属）「重新评测」
+    c_refresh, c_rejudge = st.columns([1, 1])
+    with c_refresh:
+        if st.button(i18n.t("refresh"), use_container_width=True):
+            st.rerun()
+    if user["role"] == "admin":
+        with c_rejudge:
+            if st.button(i18n.t("solve.rejudge"), use_container_width=True, type="secondary"):
+                sr, br = api_client.request("PUT", f"/api/submissions/{sel_id}/rejudge")
+                if sr == 200:
+                    st.success(i18n.t("solve.rejudge_started"))
+                    st.rerun()
+                else:
+                    st.error(br.get("msg", i18n.t("error_occurred")))
 
 
 # ================= AI =================

@@ -163,6 +163,8 @@ _STRINGS = {
     "solve.upload_file": {"zh": "上传代码文件（可选）", "en": "Upload code file (optional)"},
     "solve.upload_hint": {"zh": "支持 .py / .cpp / .c / .txt，上传后自动填入下方编辑器", "en": "Supports .py / .cpp / .c / .txt; auto-fills the editor below"},
     "solve.log_private": {"zh": "该提交者日志未公开，仅显示总分。如需查看每个测试点的 AC/WA，请联系 admin 公开该题日志。", "en": "Per-case details are hidden (public_cases off). Contact an admin to publish the log if you need them."},
+    "solve.rejudge": {"zh": "重新评测", "en": "Rejudge"},
+    "solve.rejudge_started": {"zh": "已重新评测，请刷新查看结果", "en": "Rejudge started, refresh to see the result"},
     "solve.filter_title": {"zh": "提交记录查询（管理员）", "en": "Submission query (admin)"},
     "solve.filter_user": {"zh": "按用户筛选", "en": "Filter by user"},
     "solve.filter_problem": {"zh": "按题目筛选", "en": "Filter by problem"},
