@@ -23,12 +23,14 @@ class Problem(BaseModel):
     # ---- 必填字段 ----
     id: str = Field(..., description="题目唯一标识")
     title: str = Field(..., description="题目标题")
-    description: str = Field(..., description="题目描述")
-    input_description: str = Field(..., description="输入格式说明")
-    output_description: str = Field(..., description="输出格式说明")
-    samples: list[TestCase] = Field(..., description="样例输入输出")
-    constraints: str = Field(..., description="数据范围与限制条件")
-    testcases: list[TestCase] = Field(..., description="测试点")
+
+    # ---- 软必填（API 可仅传 id+title，其余由系统默认 / 后续编辑补齐） ----
+    description: str = Field("", description="题目描述")
+    input_description: str = Field("", description="输入格式说明")
+    output_description: str = Field("", description="输出格式说明")
+    samples: list[TestCase] = Field([], description="样例输入输出")
+    constraints: str = Field("", description="数据范围与限制条件")
+    testcases: list[TestCase] = Field([], description="测试点（可后续追加）")
 
     # ---- 可选字段（带默认值） ----
     hint: str = Field("", description="额外提示")

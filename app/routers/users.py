@@ -117,12 +117,22 @@ async def get_user(request: Request, user_id: str, current: dict = Depends(get_c
 
 @router.put("/users/{user_id}/role")
 async def update_role(
-    request: Request, user_id: str, body: RoleUpdate, _: dict = Depends(get_admin)
+    request: Request, user_id: str, body: RoleUpdate, current: dict = Depends(get_admin)
 ):
-    """变更用户角色（仅管理员）。"""
+    """变更用户角色（仅管理员）。
+
+    防护规则：admin 不可修改其他 admin，也不可修改自己（防误降级锁掉系统）。
+    """
     if body.role not in ("admin", "user", "banned"):
         raise AppError(400, "invalid role")
-    if request.app.state.user_store.get_by_id(user_id) is None:
+    target = request.app.state.user_store.get_by_id(user_id)
+    if target is None:
         raise AppError(404, "user not found")
+    # 不可修改其他 admin
+    if target["role"] == "admin" and target["user_id"] != current["user_id"]:
+        raise AppError(403, "cannot modify other admin")
+    # 不可修改自己（防 admin 误降级后无法恢复）
+    if target["user_id"] == current["user_id"]:
+        raise AppError(403, "cannot modify own role")
     request.app.state.user_store.update_role(user_id, body.role)
     return ok(data={"user_id": user_id, "role": body.role}, msg="role updated")

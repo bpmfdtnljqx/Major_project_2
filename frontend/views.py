@@ -488,15 +488,20 @@ def render_solve():
         if d.get("error_info"):
             st.error(f"{i18n.t('solve.error')}：{d['error_info']}")
         s3, b3 = api_client.request("GET", f"/api/submissions/{sel_id}/log")
-        if s3 == 200 and b3["data"].get("details"):
-            st.write(i18n.t("solve.details"))
-            det_rows = [{
-                "#": det.get("id"),
-                i18n.t("solve.col_status"): det.get("result"),
-                i18n.t("solve.col_time"): det.get("time"),
-                i18n.t("solve.col_mem"): det.get("memory"),
-            } for det in b3["data"]["details"]]
-            st.table(det_rows)
+        if s3 == 200:
+            log_data = b3["data"]
+            if log_data.get("details"):
+                st.write(i18n.t("solve.details"))
+                det_rows = [{
+                    "#": det.get("id"),
+                    i18n.t("solve.col_status"): det.get("result"),
+                    i18n.t("solve.col_time"): det.get("time"),
+                    i18n.t("solve.col_mem"): det.get("memory"),
+                } for det in log_data["details"]]
+                st.table(det_rows)
+            else:
+                # 没拿到 details：要么 public_cases 关（只能看总分），要么无权限
+                st.caption(i18n.t("solve.log_private"))
     if st.button(i18n.t("refresh")):
         st.rerun()
 

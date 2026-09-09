@@ -159,6 +159,7 @@ _STRINGS = {
     "solve.output_label": {"zh": "输出", "en": "Output"},
     "solve.upload_file": {"zh": "上传代码文件（可选）", "en": "Upload code file (optional)"},
     "solve.upload_hint": {"zh": "支持 .py / .cpp / .c / .txt，上传后自动填入下方编辑器", "en": "Supports .py / .cpp / .c / .txt; auto-fills the editor below"},
+    "solve.log_private": {"zh": "该提交者日志未公开，仅显示总分。如需查看每个测试点的 AC/WA，请联系 admin 公开该题日志。", "en": "Per-case details are hidden (public_cases off). Contact an admin to publish the log if you need them."},
 
     # ================= AI =================
     "ai.title": {"zh": "AI 智能命题", "en": "AI Problem Generation"},
