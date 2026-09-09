@@ -144,11 +144,12 @@ def main() -> None:
     if "main_nav" not in st.session_state or st.session_state["main_nav"] not in all_views:
         st.session_state["main_nav"] = all_views[0]
 
+    # 注意：key 已绑定 session_state["main_nav"]，不要再传 default，否则
+    # Streamlit 会报「default 与 Session State API 同时设置」冲突。
     chosen = st.pills(
         "nav", all_views,
         format_func=lambda v: labels[v],
         label_visibility="collapsed", key="main_nav",
-        default=st.session_state.get("main_nav", all_views[0]),
     )
     if chosen is None:
         chosen = all_views[0]
