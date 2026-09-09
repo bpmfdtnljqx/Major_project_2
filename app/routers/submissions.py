@@ -175,6 +175,11 @@ async def get_submission_log(request: Request, submission_id: str, current: dict
     is_admin = current["role"] == "admin"
     is_owner = sub["user_id"] == current["user_id"]
     can_view = is_admin or is_owner or public_cases
+    # 测试点明细 details 的可见性（FAQ 答疑）：
+    #   - 管理员始终可见；
+    #   - public_cases=True 时所有登录用户可见；
+    #   - public_cases=False 时提交者本人也只能看到 score/counts，不能看 details。
+    can_view_details = is_admin or public_cases
 
     # 记录访问审计（仅已登录且 submission 存在时记录）
     request.app.state.access_log_store.record(
@@ -184,7 +189,10 @@ async def get_submission_log(request: Request, submission_id: str, current: dict
     if not can_view:
         raise AppError(403, "permission denied")
 
-    return ok(data={"details": sub["details"], "score": sub["score"], "counts": sub["counts"]})
+    data = {"score": sub["score"], "counts": sub["counts"]}
+    if can_view_details:
+        data["details"] = sub["details"]
+    return ok(data=data)
 
 
 async def _judge_task(submission_store, problem, language, code, submission_id):
