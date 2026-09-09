@@ -211,7 +211,7 @@ _STRINGS = {
         "en": "Tokens: in {i} / out {o} / total {t}, cost {c} {cur}",
     },
     "ai.result_ok": {"zh": "生成的题目（已自动加入题库）：", "en": "Generated problem (auto-added to bank):"},
-    "ai.clear_task": {"zh": "清除此任务", "en": "Clear task"},
+    "ai.clear_task": {"zh": "清除记录", "en": "Clear record"},
     "ai.cancel_btn": {"zh": "中断任务", "en": "Cancel task"},
     "ai.cancelled": {"zh": "任务已中断", "en": "Task cancelled"},
     "ai.case_count": {"zh": "测试点", "en": "Test cases"},
